@@ -1,8 +1,11 @@
 import numpy as np
 import torch
 import torch.autograd as autograd
-from laplace import FullLaplace
+from laplace import FullLaplace, KronLaplace, DiagLaplace
 from torch.utils.data import DataLoader, TensorDataset
+import torch.utils.data as data_utils
+from backpack import backpack, extend
+from backpack.extensions import BatchGrad
 
 
 class SVN:
@@ -17,10 +20,26 @@ class SVN:
         #h = 2*self.DoF , DOF ? 
 
         W = W.detach().requires_grad_(True)
+
+        model = self.P.ensemble.net
+
+        #model = extend(model)
+        #lossfunc = extend(lossfunc)
         
         log_prob = self.P.log_prob(W, X, T)
+        
+        print('log_prob: ', log_prob)
+        
+
+        #with backpack(BatchGrad()):
+        #    loss = log_prob.sum()
+        #    loss.backward()
+
+        #for name, parameter in model.named_parameters():
+        #    print(f"{name:>20}'s grad_batch shape: {parameter.grad_batch.shape}")
+        
         score_func = autograd.grad(log_prob.sum(), W)[0]
-        gmlpt  =  score_func 
+        #gmlpt  =  score_func 
 
         #GN_Hmlpt = self.model.getGNHessianMinusLogPosterior_ensemble(X)
         #M = np.mean(GN_Hmlpt, axis=0)        
@@ -28,14 +47,30 @@ class SVN:
         #Create a DataLoader for the single particle
         print('length X', X.shape[0])
 
-        particle_loader = DataLoader(TensorDataset(X, T), batch_size=1)
+        print('X: ', X)
+        print('T: ', T)
+
+        #particle_loader = DataLoader(TensorDataset(X, T), batch_size=2)
+        particle_loader = data_utils.DataLoader(
+            data_utils.TensorDataset(X, T), 
+            batch_size=2
+            )
+        
         print('length dataloader', len(particle_loader))
-        model = self.P.ensemble.net
+        #model = self.P.ensemble.net
         param_list = [p for p in model.parameters()]
-        print('W' ,W)
+        #print('W' ,W)
         print(param_list)
 
-        laplace_particle_model = FullLaplace(self.P.ensemble.net, likelihood='regression')
+        for param in model.parameters():
+            print(hasattr(param, 'grad_batch'))
+
+        #laplace_particle_model = FullLaplace(self.P.ensemble.net, likelihood='regression')
+        laplace_particle_model = DiagLaplace(self.P.ensemble.net, likelihood='regression')
+
+        #for l in param_list:
+        #    print('grad: ', l.grad_batch )
+
         laplace_particle_model.fit(particle_loader)
         
 
