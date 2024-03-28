@@ -27,4 +27,3 @@ Our implementation is designed to be versatile, catering to both regression and 
 
 We invite researchers, practitioners, and enthusiasts in machine learning and deep learning to explore our implementation, contribute to its development, and apply it to new and challenging problems. Your insights and contributions are valuable to us as we strive to push the boundaries of what is possible with Bayesian deep learning.
 
-This revised README provides a more detailed overview of your project, highlighting its importance, the motivation behind it, and its potential applications. It also encourages community engagement, which is crucial for open-source projects.
