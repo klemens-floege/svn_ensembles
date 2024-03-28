@@ -14,7 +14,7 @@ experiment:
   shuffle: True
   train_test_split: 0.2
 
-  dataset: "sine"
+  dataset: "sine" # "sine", "gap"
   plot_save_path: "images/regression_plot"
 
   layer_sizes: [1, 30, 30, 1]
