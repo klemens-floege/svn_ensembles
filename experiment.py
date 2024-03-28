@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 
 from utils.kernel import RBF
-from utils.synth_data import get_sine_data
+from utils.synth_data import get_sine_data, get_gap_data
 from utils.plot import plot_modellist
 from train.train import train
 
@@ -36,6 +36,8 @@ def run_experiment(cfg):
 
     if cfg.experiment.dataset == "sine":
         x_train, y_train, x_test, y_test = get_sine_data(n_samples=cfg.experiment.n_samples, seed= cfg.experiment.seed)
+    elif cfg.experiment.dataset == "gap":
+        x_train, y_train, x_test, y_test = get_gap_data(n_samples=cfg.experiment.n_samples, seed= cfg.experiment.seed)
     else: 
         ValueError("The configured dataset is not yet implemented")
     
@@ -80,5 +82,20 @@ def run_experiment(cfg):
     metrics = train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, cfg)
 
     
-    plot_save_path = cfg.experiment.plot_save_path
-    plot_modellist(modellist, x_train, y_train, x_test, y_test, plot_save_path)
+    
+    # Constructing the save path
+    save_path = "images/" + cfg.experiment.dataset
+    plot_name = cfg.experiment.method
+    
+    if cfg.experiment.method == "SVN":
+        # Assuming you have a way to specify or retrieve the type of Hessian calculation
+        # For demonstration, let's say it's another configuration parameter under experiment
+        hessian_type = cfg.SVN.hessian_calc  # This should be defined in your config
+        plot_name += f"_n_epchs{cfg.experiment.num_epochs}_n_samp{cfg.experiment.n_samples}_{hessian_type}_lr{cfg.experiment.lr}_parts{cfg.experiment.n_particles}.png"
+    else:
+        plot_name += f"_n_epchs{cfg.experiment.num_epochs}_n_samp{cfg.experiment.n_samples}_lr{cfg.experiment.lr}_parts{cfg.experiment.n_particles}.png"
+    
+    full_save_path = f"{save_path}/{plot_name}"
+    print("Save path:", full_save_path)
+
+    plot_modellist(modellist, x_train, y_train, x_test, y_test, full_save_path)

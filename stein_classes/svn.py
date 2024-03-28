@@ -37,28 +37,45 @@ def apply_SVN(modellist, parameters,
         
         if cfg.SVN.hessian_calc == "Full":  
             laplace_particle_model = FullLaplace(modellist[i], likelihood='regression')
+            laplace_particle_model.fit(hessian_particle_loader)
+            Hessian = laplace_particle_model.posterior_precision
+            hessians_list.append(Hessian)
             
         elif cfg.SVN.hessian_calc == "Diag":  
             laplace_particle_model = DiagLaplace(modellist[i], likelihood='regression')
+
+            laplace_particle_model = LowRankLaplace(modellist[i], likelihood='regression')
+            laplace_particle_model.fit(hessian_particle_loader)
+            Hessian = laplace_particle_model.posterior_precision
+
+            print(len(Hessian))
+            print(len(Hessian[0]))
+            print(Hessian[0][0].shape) #torch.Size([1021, 7])
+            print(Hessian[0][1].shape) #torch.Size([7])
+            print(Hessian[1][0].shape) #torch.Size([])
+            print(Hessian[1][1].shape) #torch.Size([])
 
         elif cfg.SVN.hessian_calc == "Kron":  
             laplace_particle_model = KronLaplace(modellist[i], likelihood='regression')
 
         elif cfg.SVN.hessian_calc == "LowRank":  
             laplace_particle_model = LowRankLaplace(modellist[i], likelihood='regression')
+            laplace_particle_model.fit(hessian_particle_loader)
+            Hessian = laplace_particle_model.posterior_precision[0]
+
+            print(Hessian)
+            #print(Hessian.shape)
+            hessians_list.append(Hessian)
             
         else: 
             ValueError("This is type of Hessian calculation is not yet implemented")
         
-        laplace_particle_model.fit(hessian_particle_loader)
-        Hessian = laplace_particle_model.posterior_precision
-        hessians_list.append(Hessian)
+        
 
     hessians_tensor = torch.cat(hessians_list, dim=0)
     hessians_tensor = hessians_tensor.reshape(n_particles, n_parameters, n_parameters) #(n_particles, n_parameters, n_parameters)
 
     #compute curvature matrix
-
     if cfg.SVN.use_curvature_kernel == "use_curvature":
         M = torch.mean(hessians_tensor, axis=0)
     else:
