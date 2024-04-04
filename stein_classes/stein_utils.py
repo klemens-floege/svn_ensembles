@@ -12,19 +12,19 @@ def calc_loss(modellist, batch,
 
     dim_problem = targets.shape[1]
     
-
     pred_list = []
 
     for i in range(n_particles):
         pred_list.append(modellist[i].forward(inputs))
 
     pred = torch.cat(pred_list, dim=0)
+    pred_reshaped = pred.view(n_particles, -1, dim_problem) # Stack to get [n_particles, batch_size, dim_problem]
 
-    pred_reshaped = pred.view(n_particles, targets.shape[0], dim_problem)
-    T_expanded = targets.expand(n_particles, targets.shape[0], dim_problem)
+    # Mean prediction
+    ensemble_pred = torch.mean(pred_reshaped, dim=0) 
 
-    #compute MSE loss
-    loss = 0.5 * torch.mean((T_expanded - pred_reshaped) ** 2, dim=1)
+    mse_loss = (ensemble_pred - targets) ** 2
+    loss = mse_loss
     pred_dist_std = cfg.SVN.red_dist_std
     ll = -loss*len(train_dataloader) / pred_dist_std ** 2
     log_prob = ll
