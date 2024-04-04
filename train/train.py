@@ -9,6 +9,7 @@ from stein_classes.svgd import apply_SVGD
 from stein_classes.ensemble import apply_Ensemble
 
 from utils.kernel import RBF
+from utils.eval import evaluate_modellist
 
 
 
@@ -26,6 +27,12 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
 
   #print(type(W)
   optimizer = AdamW(params=parameters, lr=lr)
+
+  #Early Stopping and loading best eval loss model
+  best_mse = float('inf')
+  best_epoch = -1  # To track the epoch number of the best MSE
+  epochs_since_improvement = 0
+  best_modellist_state = None
   
 
   print('-------------------------'+'Start training'+'-------------------------')
@@ -59,15 +66,10 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
           print(f'Train Epoch {epoch}, {loss_str}')
 
     
-    # Evaluation loop
+    """# Evaluation loop
     for i in range(n_particles):
        modellist[i].eval()
     
-    best_mse = float('inf')
-    best_epoch = -1  # To track the epoch number of the best MSE
-    epochs_since_improvement = 0
-    best_modellist_state = None
-
     total_mse = 0.0
     total_samples = 0
 
@@ -91,9 +93,11 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
             total_samples += inputs.size(0)
 
     eval_MSE = total_mse / total_samples
-    eval_rmse = torch.sqrt(eval_MSE.clone().detach())
+    eval_rmse = torch.sqrt(eval_MSE.clone().detach())"""
 
-    print(f"Test Epoch {epoch}: MSE: {eval_MSE:.4f}, RMSE: {eval_rmse:.4f}")
+    eval_MSE, eval_rmse, eval_NLL = evaluate_modellist(modellist, dataloader=eval_dataloader)
+
+    print(f"Test Epoch {epoch}: MSE: {eval_MSE:.4f}, RMSE: {eval_rmse:.4f}, NLL: {eval_NLL:.4f}")
 
     # Check for improvement
     if eval_MSE < best_mse:
@@ -107,7 +111,7 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
         print(f"No improvement in MSE for {epochs_since_improvement} epochs.")
 
     # Early stopping
-    if epochs_since_improvement >= 5:
+    if epochs_since_improvement >= cfg.experiment.early_stop_epochs:
         print("Early stopping triggered.")
         break
 

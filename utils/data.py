@@ -1,4 +1,8 @@
 import numpy as np
+import pandas as pd
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 def sine_func(x):
     return np.sin(2 * np.pi * x)
@@ -47,5 +51,23 @@ def get_gap_data(n_samples, seed, gap_start=-1, gap_end=1.5):
     # Add random noise to the 'true' curve to generate the observed y values
     noise = np.random.normal(0, 0.1, len(x_train))  # Noise level is lower for clearer visualization
     y_train = y_true + noise
+    
+    return x_train, y_train, x_test, y_test
+
+
+def load_yacht_data(test_size_split, seed):
+    file_path =  "data/yachthydrodynamics.csv"
+    data = pd.read_csv(file_path, sep=';')
+    # Split the data into features and target variable
+    X = data.iloc[:, :-1].values  # Features
+    y = data.iloc[:, -1].values   # Target variable
+    
+    # Splitting data into training and testing sets
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
+    
+    # Normalize the features
+    scaler = StandardScaler()
+    x_train = scaler.fit_transform(x_train)
+    x_test = scaler.transform(x_test)
     
     return x_train, y_train, x_test, y_test
