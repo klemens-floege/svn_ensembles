@@ -4,7 +4,8 @@ from omegaconf import DictConfig, OmegaConf
 
 import os
 
-from experiment import run_experiment
+#from experiment import run_experiment
+from cv_experiment import run_experiment
 
 
 @hydra.main(version_base="1.3.2", config_path="conf", config_name="config")

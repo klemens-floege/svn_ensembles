@@ -71,3 +71,71 @@ def load_yacht_data(test_size_split, seed):
     x_test = scaler.transform(x_test)
     
     return x_train, y_train, x_test, y_test
+
+
+def load_energy_data(test_size_split, seed):
+    file_path =  "data/ENB2012_data.xlsx"
+    #data = pd.read_csv(file_path, sep=';')
+    data = pd.read_excel(file_path)
+    # Split the data into features and target variable
+    X = data.iloc[:, :-1].values  # Features
+    y = data.iloc[:, -1].values   # Target variable
+    
+    # Splitting data into training and testing sets
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
+    
+    # Normalize the features
+    scaler = StandardScaler()
+    x_train = scaler.fit_transform(x_train)
+    x_test = scaler.transform(x_test)
+    
+    return x_train, y_train, x_test, y_test
+
+
+def load_autompg_data(test_size_split, seed):
+    file_path =  "data/auto+mpg/auto-mpg.csv"
+
+    # Adjust these variables according to your .data file
+    input_file_path = 'data/auto+mpg/auto-mpg.data'
+    output_file_path = 'data/auto+mpg/auto-mpg.csv'
+    delimiter = ','  # For tab-delimited files, use '\t'; for space-delimited, use ' '
+
+    # Load the .data file
+    df = pd.read_csv(input_file_path, delimiter=delimiter)
+
+    # Save the DataFrame to a .csv file
+    df.to_csv(output_file_path, index=False)
+
+    data = pd.read_csv(file_path, sep=';')
+    # Split the data into features and target variable
+    X = data.iloc[:, :-1].values  # Features
+    y = data.iloc[:, -1].values   # Target variable
+    
+    # Splitting data into training and testing sets
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
+    
+    # Normalize the features
+    scaler = StandardScaler()
+    x_train = scaler.fit_transform(x_train)
+    x_test = scaler.transform(x_test)
+    
+    return x_train, y_train, x_test, y_test
+
+
+def load_concrete_data(test_size_split, seed):
+    file_path =  "data/concrete+compressive+strength/Concrete_Data.xls"
+    #data = pd.read_csv(file_path, sep=';')
+    data = pd.read_excel(file_path)
+    # Split the data into features and target variable
+    X = data.iloc[:, :-1].values  # Features
+    y = data.iloc[:, -1].values   # Target variable
+    
+    # Splitting data into training and testing sets
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
+    
+    # Normalize the features
+    scaler = StandardScaler()
+    x_train = scaler.fit_transform(x_train)
+    x_test = scaler.transform(x_test)
+    
+    return x_train, y_train, x_test, y_test

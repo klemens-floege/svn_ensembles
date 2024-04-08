@@ -4,18 +4,21 @@ defaults:
 
 experiment:
   seed: 10
+  n_splits: 5
   n_samples: 20
 
   num_epochs: 20
-  batch_size: 4 
+  batch_size: 32 
   lr: 0.001
   kernel_width: 0.01
   early_stop_epochs: 5
+
+  early_stopping: True
   
   shuffle: True
   train_test_split: 0.2
 
-  dataset: "sine" # "sine", "gap" "yacht"
+  dataset: "sine" # "sine", "gap" "yacht" "energy" "autompg" "concrete"
   plot_save_path: "images/regression_plot"
 
   hidden_layers: [30, 30]
