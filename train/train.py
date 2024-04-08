@@ -57,47 +57,18 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
         else:
            ValueError("Approximate Bayesian Inference method not implemented ")
 
-
             
         optimizer.step()
         
-        if step == 0:          
-          loss_str = ', '.join([f'Loss {i} = {loss[i].item():.4f}' for i in range(loss.shape[0])])
-          print(f'Train Epoch {epoch}, {loss_str}')
+        #if step == 0:          
+        #  loss_str = ', '.join([f'Loss {i} = {loss[i].item():.4f}' for i in range(loss.shape[0])])
+        #  print(f'Train Epoch {epoch}, {loss_str}')
 
     
-    """# Evaluation loop
-    for i in range(n_particles):
-       modellist[i].eval()
-    
-    total_mse = 0.0
-    total_samples = 0
-
-    for step, batch in enumerate(tqdm(eval_dataloader)):
-        with torch.no_grad():
-            inputs, targets = batch
-
-            dim_problem = targets.shape[1]
-            
-            pred_list = []
-            for i in range(n_particles):
-                pred_list.append(modellist[i].forward(inputs))
-            pred = torch.cat(pred_list, dim=0)
-            pred_reshaped = pred.view(n_particles, -1, dim_problem)
-            ensemble_pred = torch.mean(pred_reshaped, dim=0) 
-                        
-            loss = (ensemble_pred.expand_as(targets)-targets)**2
-
-            
-            total_mse = loss.sum() 
-            total_samples += inputs.size(0)
-
-    eval_MSE = total_mse / total_samples
-    eval_rmse = torch.sqrt(eval_MSE.clone().detach())"""
 
     eval_MSE, eval_rmse, eval_NLL = evaluate_modellist(modellist, dataloader=eval_dataloader)
 
-    print(f"Test Epoch {epoch}: MSE: {eval_MSE:.4f}, RMSE: {eval_rmse:.4f}, NLL: {eval_NLL:.4f}")
+    print(f"Epoch {epoch}: MSE: {eval_MSE:.4f}, RMSE: {eval_rmse:.4f}, NLL: {eval_NLL:.4f}")
 
     # Check for improvement
     if eval_MSE < best_mse:
@@ -110,8 +81,10 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
         epochs_since_improvement += 1
         print(f"No improvement in MSE for {epochs_since_improvement} epochs.")
 
+
+
     # Early stopping
-    if epochs_since_improvement >= cfg.experiment.early_stop_epochs:
+    if epochs_since_improvement >= cfg.experiment.early_stop_epochs and cfg.experiment.early_stopping:
         print("Early stopping triggered.")
         break
 
