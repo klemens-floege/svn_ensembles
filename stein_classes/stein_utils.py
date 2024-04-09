@@ -2,10 +2,10 @@ import torch
 
 
 def calc_loss(modellist, batch,
-              train_dataloader, cfg):
+              train_dataloader, cfg, device):
 
-    inputs = batch[0]
-    targets = batch[1]
+    inputs = batch[0].to(device)
+    targets = batch[1].to(device)
 
     n_particles = len(modellist)
     n_parameters = sum(p.numel() for p in modellist[0].parameters() if p.requires_grad)

@@ -11,14 +11,14 @@ from stein_classes.stein_utils import calc_loss
 def apply_SVN(modellist, parameters, 
               batch, train_dataloader, kernel, device, cfg):
     
-    inputs = batch[0]
-    targets = batch[1]
+    inputs = batch[0].to(device)
+    targets = batch[1].to(device)
 
     n_particles = len(modellist)
     n_parameters = sum(p.numel() for p in modellist[0].parameters() if p.requires_grad)
     
 
-    loss, log_prob = calc_loss(modellist, batch, train_dataloader, cfg)
+    loss, log_prob = calc_loss(modellist, batch, train_dataloader, cfg, device)
 
     score_func = autograd.grad(log_prob.sum(), parameters)
     score_tensors = [t.view(-1) for t in score_func]  # Flatten
@@ -125,7 +125,15 @@ def apply_SVN(modellist, parameters,
         v_svgd_numpy = v_svgd.detach().cpu().flatten().numpy()
 
         alphas, _ = scipy.sparse.linalg.cg(H_numpy, v_svgd_numpy, maxiter=cg_maxiter)
+        
+        
         alphas = torch.tensor(alphas, dtype=torch.float32).reshape(n_particles, n_parameters).to(device)
+        
+        #print('alpahsd deviec: ', alphas.device)
+
+        #print('KXX device : ', K_XX.device)
+
+        K_XX = K_XX.to(device)
                 
         alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
         v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
@@ -141,8 +149,10 @@ def apply_SVN(modellist, parameters,
         ValueError("This equations system solver is not implemented")
     
 
+    
     #Assign gradients    
     for model, grads in zip(modellist, v_svn):
+        model.to(device)
         # Flatten all parameters of the model and their gradients
         flat_params = torch.cat([p.view(-1) for p in model.parameters()])
         
