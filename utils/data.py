@@ -98,7 +98,7 @@ def load_autompg_data(test_size_split, seed):
     # Adjust these variables according to your .data file
     input_file_path = 'data/auto+mpg/auto-mpg.data'
     output_file_path = 'data/auto+mpg/auto-mpg.csv'
-    delimiter = ','  # For tab-delimited files, use '\t'; for space-delimited, use ' '
+    delimiter = '\t'  # For tab-delimited files, use '\t'; for space-delimited, use ' '
 
     # Load the .data file
     df = pd.read_csv(input_file_path, delimiter=delimiter)
@@ -106,8 +106,12 @@ def load_autompg_data(test_size_split, seed):
     # Save the DataFrame to a .csv file
     df.to_csv(output_file_path, index=False)
 
-    data = pd.read_csv(file_path, sep=';')
+    #data = pd.read_csv(file_path)
+    #data = pd.read_csv(file_path, sep='\t')
+    data = pd.read_csv(file_path, sep=',')
     # Split the data into features and target variable
+    print(data.head())
+
     X = data.iloc[:, :-1].values  # Features
     y = data.iloc[:, -1].values   # Target variable
     
