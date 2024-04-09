@@ -14,6 +14,9 @@ from utils.eval import evaluate_modellist
 
 
 def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, cfg):
+
+  for model in modellist:
+    model.to(device)
   
   
   n_particles = len(modellist)
@@ -66,7 +69,7 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
 
     
 
-    eval_MSE, eval_rmse, eval_NLL = evaluate_modellist(modellist, dataloader=eval_dataloader)
+    eval_MSE, eval_rmse, eval_NLL = evaluate_modellist(modellist, dataloader=eval_dataloader, device=device)
 
     print(f"Epoch {epoch}: MSE: {eval_MSE:.4f}, RMSE: {eval_rmse:.4f}, NLL: {eval_NLL:.4f}")
 

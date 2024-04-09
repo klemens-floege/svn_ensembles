@@ -10,7 +10,7 @@ def apply_SVGD(modellist, parameters,
     n_parameters = sum(p.numel() for p in modellist[0].parameters() if p.requires_grad)
     
 
-    loss, log_prob = calc_loss(modellist, batch, train_dataloader, cfg)
+    loss, log_prob = calc_loss(modellist, batch, train_dataloader, cfg, device)
         
 
     score_func = autograd.grad(log_prob.sum(), parameters)
