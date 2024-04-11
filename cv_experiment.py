@@ -117,7 +117,7 @@ def run_experiment(cfg):
         # Train and evaluate as before
         metrics = train(modellist, cfg.experiment.lr, cfg.experiment.num_epochs, train_dataloader, eval_dataloader, device, cfg)
         
-        test_MSE, test_rmse, test_nll = evaluate_modellist(modellist, dataloader=test_dataloader)
+        test_MSE, test_rmse, test_nll = evaluate_modellist(modellist, dataloader=test_dataloader, device=device)
 
         print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll:.4f}")
         
