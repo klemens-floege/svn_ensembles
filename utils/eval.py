@@ -3,7 +3,7 @@ import numpy as np
 from tqdm import tqdm  
 
 # Evaluation loop
-def evaluate_modellist(modellist, dataloader):
+def evaluate_modellist(modellist, dataloader, device):
     
     n_particles = len(modellist)
     for model in modellist:
@@ -16,6 +16,9 @@ def evaluate_modellist(modellist, dataloader):
     for step, batch in enumerate(tqdm(dataloader)):
         with torch.no_grad():
             inputs, targets = batch
+
+            inputs = inputs.to(device)
+            targets = targets.to(device)
 
             dim_problem = targets.shape[1]
             
@@ -44,8 +47,8 @@ def evaluate_modellist(modellist, dataloader):
 
     
     eval_MSE = total_mse / total_samples
-    #eval_rmse = torch.sqrt(eval_MSE.clone().detach())
-    eval_RMSE = np.sqrt(eval_MSE)
+    eval_RMSE = torch.sqrt(eval_MSE.clone().detach())
+    #eval_RMSE = np.sqrt(eval_MSE)
     eval_NLL = total_nll / total_samples  # Average NLL per data point
 
     return eval_MSE, eval_RMSE, eval_NLL
