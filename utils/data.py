@@ -56,7 +56,7 @@ def get_gap_data(n_samples, seed, gap_start=-1, gap_end=1.5):
 
 
 def load_yacht_data(test_size_split, seed):
-    file_path =  "data/yachthydrodynamics.csv"
+    file_path =  "data/yacht/yachthydrodynamics.csv"
     data = pd.read_csv(file_path, sep=';')
     # Split the data into features and target variable
     X = data.iloc[:, :-1].values  # Features
@@ -74,7 +74,7 @@ def load_yacht_data(test_size_split, seed):
 
 
 def load_energy_data(test_size_split, seed):
-    file_path =  "data/ENB2012_data.xlsx"
+    file_path =  "data/energy/ENB2012_data.xlsx"
     #data = pd.read_csv(file_path, sep=';')
     data = pd.read_excel(file_path)
     # Split the data into features and target variable
@@ -93,32 +93,15 @@ def load_energy_data(test_size_split, seed):
 
 
 def load_autompg_data(test_size_split, seed):
-    file_path =  "data/auto+mpg/auto-mpg.csv"
-
-    # Adjust these variables according to your .data file
-    input_file_path = 'data/auto+mpg/auto-mpg.data'
-    output_file_path = 'data/auto+mpg/auto-mpg.csv'
-    delimiter = '\t'  # For tab-delimited files, use '\t'; for space-delimited, use ' '
-
-    # Load the .data file
-    df = pd.read_csv(input_file_path, delimiter=delimiter)
-
-    # Save the DataFrame to a .csv file
-    df.to_csv(output_file_path, index=False)
-
-    #data = pd.read_csv(file_path)
-    #data = pd.read_csv(file_path, sep='\t')
-    data = pd.read_csv(file_path, sep=',')
-    # Split the data into features and target variable
-    print(data.head())
-
-    X = data.iloc[:, :-1].values  # Features
-    y = data.iloc[:, -1].values   # Target variable
+   
+    file_path =  "data/autompg/auto-mpg.xlsx"
+    data = pd.read_excel(file_path)
     
-    # Splitting data into training and testing sets
+    X = data.iloc[:, 1:-1].values  # Features: all columns except the first and last
+    y = data.iloc[:, 0].values     # Target variable: the first column 'mpg'
+    
     x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
     
-    # Normalize the features
     scaler = StandardScaler()
     x_train = scaler.fit_transform(x_train)
     x_test = scaler.transform(x_test)
@@ -127,17 +110,81 @@ def load_autompg_data(test_size_split, seed):
 
 
 def load_concrete_data(test_size_split, seed):
-    file_path =  "data/concrete+compressive+strength/Concrete_Data.xls"
-    #data = pd.read_csv(file_path, sep=';')
+    file_path =  "data/concrete/Concrete_Data.xls"
     data = pd.read_excel(file_path)
-    # Split the data into features and target variable
+    
     X = data.iloc[:, :-1].values  # Features
     y = data.iloc[:, -1].values   # Target variable
     
-    # Splitting data into training and testing sets
     x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
     
-    # Normalize the features
+    scaler = StandardScaler()
+    x_train = scaler.fit_transform(x_train)
+    x_test = scaler.transform(x_test)
+    
+    return x_train, y_train, x_test, y_test
+
+
+def load_kin8nm_data(test_size_split, seed):
+    file_path =  "data/kin8nm/dataset_2175_kin8nm.xlsx"
+    data = pd.read_excel(file_path)
+    
+    X = data.iloc[:, :-1].values  # Features
+    y = data.iloc[:, -1].values   # Target variable
+    
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
+    
+    scaler = StandardScaler()
+    x_train = scaler.fit_transform(x_train)
+    x_test = scaler.transform(x_test)
+    
+    return x_train, y_train, x_test, y_test
+
+
+def load_naval_data(test_size_split, seed):
+    file_path =  "data/naval/data.xlsx"
+    data = pd.read_excel(file_path)
+    print(data.head())
+
+    #TODO: double check this
+    X = data.iloc[:, :-2].values  # Features
+    y = data.iloc[:, -2].values   # Target variable
+    
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
+    
+    scaler = StandardScaler()
+    x_train = scaler.fit_transform(x_train)
+    x_test = scaler.transform(x_test)
+    
+    return x_train, y_train, x_test, y_test
+
+def load_power_data(test_size_split, seed):
+    file_path =  "data/power/Folds5x2_pp.xlsx"
+    data = pd.read_excel(file_path)
+    print(data.head())
+
+    #PE is target variable
+    X = data.iloc[:, :-1].values  # Features
+    y = data.iloc[:, -1].values   # Target variable
+    
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
+    
+    scaler = StandardScaler()
+    x_train = scaler.fit_transform(x_train)
+    x_test = scaler.transform(x_test)
+    
+    return x_train, y_train, x_test, y_test
+
+
+def load_protein_data(test_size_split, seed):
+    file_path =  "data/protein/CASP.csv"
+    data = pd.read_csv(file_path)
+    
+    X = data.iloc[:, 1:-1].values  # Features: all columns except the first and last
+    y = data.iloc[:, 0].values     # Target variable: the first column 'RMSD'
+    
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
+    
     scaler = StandardScaler()
     x_train = scaler.fit_transform(x_train)
     x_test = scaler.transform(x_test)

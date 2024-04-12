@@ -140,12 +140,16 @@ def apply_SVN(modellist, parameters,
         cg_maxiter = 50        
 
         v_svgd_numpy = v_svgd.detach().cpu().flatten().numpy()
+        score_func_numpy = score_func_tensor.detach().cpu().flatten().numpy()
 
         alphas, _ = scipy.sparse.linalg.cg(H_op, v_svgd_numpy, maxiter=cg_maxiter)
+        #alphas, _ = scipy.sparse.linalg.cg(H_op, v_svgd_numpy, maxiter=cg_maxiter)
+
         alphas = torch.tensor(alphas, dtype=torch.float32).reshape(n_particles, n_parameters).to(device)
                 
         alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
         v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
+        #v_svn = alphas_reshaped
 
 
     elif solve_method == 'Cholesky':

@@ -1,5 +1,6 @@
 import torch
 import copy
+import time
 
 from tqdm import tqdm
 from torch.optim import AdamW
@@ -36,6 +37,9 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
   best_epoch = -1  # To track the epoch number of the best MSE
   epochs_since_improvement = 0
   best_modellist_state = None
+
+  
+  avg_time = 0
   
 
   print('-------------------------'+'Start training'+'-------------------------')
@@ -43,6 +47,7 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
 
     optimizer.zero_grad()
     
+    start_time = time.time()
 
     print('='*100)
     print(f'Epoch {epoch}')
@@ -90,7 +95,16 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
     if epochs_since_improvement >= cfg.experiment.early_stop_epochs and cfg.experiment.early_stopping:
         print("Early stopping triggered.")
         break
+    
 
+    time_diff = time.time() - start_time
+
+    avg_time += time_diff
+
+  avg_time = avg_time / num_epochs
+  
   # At the end of training, or if early stopping was triggered, load the best model list
   modellist = best_modellist_state
   print("Loaded model list based on eval MSE from epoch: ", best_epoch)
+
+  return avg_time

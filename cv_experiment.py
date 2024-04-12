@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 
 from utils.kernel import RBF
-from utils.data import get_sine_data, get_gap_data, load_yacht_data, load_energy_data, load_autompg_data, load_concrete_data
+from utils.data import get_sine_data, get_gap_data, load_yacht_data, load_energy_data, load_autompg_data, load_concrete_data, load_kin8nm_data, load_protein_data, load_naval_data, load_power_data
 from utils.plot import plot_modellist
 from utils.eval import evaluate_modellist
 from train.train import train
@@ -46,6 +46,8 @@ def initliase_models(input_dim, output_dim, cfg):
         layer_sizes.append(hidden_layers[k])
     layer_sizes.append(output_dim)  # Set the last layer size to match the feature dimension of y_train (or 1 if y_train is a vector)
 
+    print('layer sizes: ', layer_sizes)
+
     modellist = []
 
     for _ in range(n_particles):
@@ -75,6 +77,14 @@ def run_experiment(cfg):
         x_train, y_train, x_test, y_test = load_autompg_data(test_size_split=cfg.experiment.train_test_split, seed=cfg.experiment.seed)
     elif cfg.experiment.dataset =="concrete":
         x_train, y_train, x_test, y_test = load_concrete_data(test_size_split=cfg.experiment.train_test_split, seed=cfg.experiment.seed)
+    elif cfg.experiment.dataset =="kin8nm":
+        x_train, y_train, x_test, y_test = load_kin8nm_data(test_size_split=cfg.experiment.train_test_split, seed=cfg.experiment.seed)
+    elif cfg.experiment.dataset =="naval":
+        x_train, y_train, x_test, y_test = load_naval_data(test_size_split=cfg.experiment.train_test_split, seed=cfg.experiment.seed)
+    elif cfg.experiment.dataset =="protein":
+        x_train, y_train, x_test, y_test = load_protein_data(test_size_split=cfg.experiment.train_test_split, seed=cfg.experiment.seed)
+    elif cfg.experiment.dataset =="power":
+        x_train, y_train, x_test, y_test = load_power_data(test_size_split=cfg.experiment.train_test_split, seed=cfg.experiment.seed)
     else: 
         ValueError("The configured dataset is not yet implemented")
 
@@ -115,15 +125,15 @@ def run_experiment(cfg):
         
         
         # Train and evaluate as before
-        metrics = train(modellist, cfg.experiment.lr, cfg.experiment.num_epochs, train_dataloader, eval_dataloader, device, cfg)
+        avg_train_time_per_epoch = train(modellist, cfg.experiment.lr, cfg.experiment.num_epochs, train_dataloader, eval_dataloader, device, cfg)
         
         test_MSE, test_rmse, test_nll = evaluate_modellist(modellist, dataloader=test_dataloader, device=device)
 
-        print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll:.4f}")
+        print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
         
         #print(test_MSE)
         #print(test_nll)
-        metrics_list.append((test_MSE, test_nll))
+        metrics_list.append((test_MSE, test_nll, avg_train_time_per_epoch))
         
 
         if fold== 0 and cfg.experiment.dataset in  ["sine", "gap"]: 
@@ -154,5 +164,5 @@ def run_experiment(cfg):
     metrics_mean = metrics_array.mean(axis=0)
     metrics_std = metrics_array.std(axis=0)
 
-    print(f"Average Test MSE: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Average Test NLL: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f}")
+    print(f"Average Test MSE: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Average Test NLL: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f},  Avg Time / Epoch: {metrics_mean[2]:.2f} ± {metrics_std[2]:.2f}")
     
