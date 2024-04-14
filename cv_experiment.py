@@ -86,7 +86,9 @@ def run_experiment(cfg):
     elif cfg.experiment.dataset =="power":
         x_train, y_train, x_test, y_test = load_power_data(test_size_split=cfg.experiment.train_test_split, seed=cfg.experiment.seed)
     else: 
+        print('The configured dataset is not yet implemented')
         ValueError("The configured dataset is not yet implemented")
+        return
 
     n_splits = cfg.experiment.n_splits  # Number of folds for k-fold CV
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=cfg.experiment.seed)
@@ -94,7 +96,8 @@ def run_experiment(cfg):
     x_combined = np.concatenate((x_train, x_test), axis=0)
     y_combined = np.concatenate((y_train, y_test), axis=0)
 
-    metrics_list = []  # Store metrics from each fold
+    n_metrics = 3 # metrics to track across folds
+    metrics_array = np.zeros((n_splits, n_metrics)) # Store metrics from each fold
     
     for fold, (train_idx, test_idx) in enumerate(kf.split(x_combined)):
         print(f"Running fold {fold + 1}/{n_splits}")
@@ -133,7 +136,19 @@ def run_experiment(cfg):
         
         #print(test_MSE)
         #print(test_nll)
-        metrics_list.append((test_MSE, test_nll, avg_train_time_per_epoch))
+        # Ensure test_MSE is a tensor and move to CPU
+        if isinstance(test_MSE, torch.Tensor):
+            test_MSE = test_MSE.cpu()
+
+        # Ensure test_nll is a tensor and move to CPU
+        if isinstance(test_nll, torch.Tensor):
+            test_nll = test_nll.cpu()
+
+        # Ensure avg_train_time_per_epoch is a tensor and move to CPU
+        if isinstance(avg_train_time_per_epoch, torch.Tensor):
+            avg_train_time_per_epoch = avg_train_time_per_epoch.cpu()
+
+        metrics_array[fold] = [test_MSE, test_nll, avg_train_time_per_epoch]
         
 
         if fold== 0 and cfg.experiment.dataset in  ["sine", "gap"]: 
@@ -158,7 +173,9 @@ def run_experiment(cfg):
     # After all folds are complete, aggregate your metrics across folds to evaluate overall performance
     #aggregate_metrics(metrics_list)
     # Convert metrics_list to a numpy array for easier calculation of mean and std
-    metrics_array = np.array(metrics_list)
+    #metrics_array = np.array(metrics_list)
+    #metrics_array = np.array([metric.detach().cpu() for metric in metrics_list])
+
 
     # Calculate mean and standard deviation for each metric across all folds
     metrics_mean = metrics_array.mean(axis=0)

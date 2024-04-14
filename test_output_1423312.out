@@ -1,0 +1,68 @@
+Directory already exists: /home/hgf_hmgu/hgf_tfv0045/svn_ensembles/results
+Running fold 1/5
+layer sizes:  [6, 50, 50, 1]
+number of parameters per model 2951
+-------------------------Start training-------------------------
+====================================================================================================
+Epoch 0
+Epoch 0: MSE: 178.0649, RMSE: 13.3441, NLL: 204.1152
+New best MSE, model saved.
+====================================================================================================
+Epoch 1
+Epoch 1: MSE: 69.3314, RMSE: 8.3266, NLL: 30.7983
+New best MSE, model saved.
+====================================================================================================
+Epoch 2
+Epoch 2: MSE: 10.0289, RMSE: 3.1668, NLL: 4.2796
+New best MSE, model saved.
+====================================================================================================
+Epoch 3
+Epoch 3: MSE: 3.4505, RMSE: 1.8575, NLL: 2.3277
+New best MSE, model saved.
+====================================================================================================
+Epoch 4
+Epoch 4: MSE: 7.8932, RMSE: 2.8095, NLL: 2.5132
+No improvement in MSE for 1 epochs.
+====================================================================================================
+Epoch 5
+Epoch 5: MSE: 4.9725, RMSE: 2.2299, NLL: 2.4682
+No improvement in MSE for 2 epochs.
+====================================================================================================
+Epoch 6
+Epoch 6: MSE: 3.0577, RMSE: 1.7486, NLL: 2.3850
+New best MSE, model saved.
+====================================================================================================
+Epoch 7
+Epoch 7: MSE: 1.3631, RMSE: 1.1675, NLL: 2.3706
+New best MSE, model saved.
+====================================================================================================
+Epoch 8
+Epoch 8: MSE: 1.3831, RMSE: 1.1761, NLL: 2.3851
+No improvement in MSE for 1 epochs.
+====================================================================================================
+Epoch 9
+Epoch 9: MSE: 0.0915, RMSE: 0.3026, NLL: 2.3909
+New best MSE, model saved.
+====================================================================================================
+Epoch 10
+
+============================= JOB FEEDBACK =============================
+
+Job ID: 1423312
+Cluster: haic
+User/Group: hgf_tfv0045/hgf_hmgu
+Account: hgf_hmgu
+State: CANCELLED (exit code 0)
+Partition: normal
+Nodes: 1
+Cores per node: 2
+Nodelist: haicn1704
+CPU Utilized: 00:04:14
+CPU Efficiency: 48.11% of 00:08:48 core-walltime
+Job Wall-clock time: 00:04:24
+Starttime: Fri Apr 12 19:41:42 2024
+Endtime: Fri Apr 12 19:46:06 2024
+Memory Utilized: 1.70 GB
+Memory Efficiency: 26.32% of 6.45 GB
+Energy Consumed: 144525 Joule / 40.1458333333333 Watthours
+Average node power draw: 547.443181818182 Watt

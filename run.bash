@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
-#SBATCH -J svn_ensembles
+#SBATCH -J concrete_3e-2_50_SVN
 #SBATCH --output=/home/hgf_hmgu/hgf_tfv0045/svn_ensembles/outputs/%x.out
 #SBATCH --error=/home/hgf_hmgu/hgf_tfv0045/svn_ensembles/outputs/%x.err
 #SBATCH --partition=normal
@@ -32,5 +32,5 @@ source myEnv/bin/activate
 
 
 # Run your Python script
-srun python main.py experiment.dataset="energy"  experiment.hidden_layers="[50, 50]" \
- experiment.method="SVN" experiment.num_epochs=50 experiment.lr=1e-2 experiment.early_stopping=False
+srun python main.py experiment.dataset="yacht" \
+ experiment.method="SVN" experiment.num_epochs=50 experiment.lr=3e-2 

@@ -63,7 +63,10 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
         elif cfg.experiment.method == "Ensemble":
           loss = apply_Ensemble(modellist, parameters, batch, train_dataloader, K, device, cfg)
         else:
+           print('Approximate Bayesian Inference method not implemented ')
            ValueError("Approximate Bayesian Inference method not implemented ")
+           return
+           
 
             
         optimizer.step()
