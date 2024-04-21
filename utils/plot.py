@@ -28,12 +28,20 @@ def plot_modellist(modellist,
             y_mean = torch.mean(y_ensemble, dim=0).squeeze()  # Mean across particles
             y_std = torch.std(y_ensemble, dim=0).squeeze()  # Std deviation across particles
             
+        x_test_tensor = x_test_tensor.squeeze()
+        x_test = x_test.squeeze()
+        y_test = y_test.squeeze()
         
+
         ax.plot(x_test, y_test, color="blue", label="sin($2\\pi x$)")
         ax.scatter(x_train, y_train, s=50, alpha=0.5, label="observation")
         
         #ax.plot(x_test_tensor, y_mean, color="red", label="predict mean")
-        ax.plot(x_test_tensor, y_mean, color="red", label="predict mean")
+        #ax.plot(x_test_tensor, y_mean, color="red", label="predict mean")
+        try:
+            ax.plot(x_test_tensor, y_mean, color="red", label="predict mean")
+        except Exception as e:
+            print("Failed to plot due to an error:", e)
 
 
         # Plot ensemble predictions

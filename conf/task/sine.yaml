@@ -1,0 +1,5 @@
+
+dataset: "sine"
+dim_problem: 1
+
+task_type: 'regression'

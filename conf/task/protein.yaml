@@ -1,0 +1,5 @@
+dataset: "protein"
+
+dim_problem: 1
+file_path: "data/protein/CASP.csv"
+task_type: 'regression'

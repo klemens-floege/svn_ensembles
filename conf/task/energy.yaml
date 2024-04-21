@@ -1,0 +1,7 @@
+
+
+dataset: "energy"
+
+dim_problem: 1
+file_path: "data/energy/ENB2012_data.xlsx"
+task_type: 'regression'

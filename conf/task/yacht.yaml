@@ -1,0 +1,6 @@
+
+dataset: "yacht"
+
+dim_problem: 1
+file_path: "data/yacht/yachthydrodynamics.csv"
+task_type: 'regression'

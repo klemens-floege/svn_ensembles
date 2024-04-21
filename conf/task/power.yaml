@@ -1,0 +1,6 @@
+
+dataset: "power"
+
+dim_problem: 1
+file_path: "data/power/Folds5x2_pp.xlsx"
+task_type: 'regression'

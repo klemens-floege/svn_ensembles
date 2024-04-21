@@ -1,0 +1,6 @@
+
+dataset: "kin8nm"
+
+dim_problem: 1
+file_path: "data/kin8nm/dataset_2175_kin8nm.xlsx"
+task_type: 'regression'
