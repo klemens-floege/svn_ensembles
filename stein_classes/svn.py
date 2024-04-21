@@ -27,6 +27,7 @@ def apply_SVN(modellist, parameters,
 
 
     inputs_squeezed = inputs.squeeze(1)  # Specify dimension to squeeze
+    #TODO; squee targt maybe 
 
 
     hessian_particle_loader = data_utils.DataLoader(
@@ -80,12 +81,13 @@ def apply_SVN(modellist, parameters,
         else: 
             ValueError("This is type of Hessian calculation is not yet implemented")
         
-        
+    
     if cfg.SVN.hessian_calc == "Full":  
         hessians_tensor = torch.cat(hessians_list, dim=0)
         hessians_tensor = hessians_tensor.reshape(n_particles, n_parameters, n_parameters) #(n_particles, n_parameters, n_parameters)
 
     #compute curvature matrix
+    #TODO: implement kernel M for KFAC, Diag, 
     if cfg.SVN.use_curvature_kernel == "use_curvature":
         M = torch.mean(hessians_tensor, axis=0)
     else:
@@ -148,8 +150,10 @@ def apply_SVN(modellist, parameters,
         alphas = torch.tensor(alphas, dtype=torch.float32).reshape(n_particles, n_parameters).to(device)
                 
         alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
+        
         v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
-        #v_svn = alphas_reshaped
+        #if cfg.SVN.hessian_calc == "Kron":
+        #    v_svn = alphas_reshaped
 
 
     elif solve_method == 'Cholesky':

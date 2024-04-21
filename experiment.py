@@ -96,17 +96,17 @@ def run_experiment(cfg):
     lr = cfg.experiment.lr
     num_epochs = cfg.experiment.num_epochs
 
-    metrics = train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, cfg)
+    avg_train_time_per_epoch = train(modellist, cfg.experiment.lr, cfg.experiment.num_epochs, train_dataloader, eval_dataloader, device, cfg)
+        
+    test_MSE, test_rmse, test_nll = evaluate_modellist(modellist, dataloader=test_dataloader, device=device)
 
-    test_MSE, test_rmse, test_nll = evaluate_modellist(modellist, dataloader=test_dataloader)
-
-    print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll:.4f}")
+    print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
 
     
     #plot 1D regression datasets
     if cfg.experiment.dataset in  ["sine", "gap"]:
         # Constructing the save path
-        save_path = "images/" + cfg.experiment.dataset
+        save_path = "debug/" + cfg.experiment.dataset
         plot_name = cfg.experiment.method
         
         if cfg.experiment.method == "SVN":

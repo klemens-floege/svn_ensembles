@@ -1,14 +1,15 @@
 defaults:
   - _self_
+  - task: "sine" # "sine", "gap" "yacht" "energy" "autompg" "concrete" "parkinsons"
 
 
 experiment:
   seed: 10
   n_splits: 5
-  n_samples: 20
+  n_samples: 400
 
   num_epochs: 50
-  batch_size: 32 
+  batch_size: 16 
   lr: 0.001
   kernel_width: 0.01
   early_stop_epochs: 5
@@ -16,9 +17,8 @@ experiment:
   early_stopping: False
   
   shuffle: True
-  train_test_split: 0.2
+  train_val_split: 0.20
 
-  dataset: "sine" # "sine", "gap" "yacht" "energy" "autompg" "concrete"
   plot_save_path: "images/regression_plot"
 
   hidden_layers: [50, 50]

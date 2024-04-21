@@ -1,0 +1,6 @@
+
+dataset: "autompg"
+
+dim_problem: 1
+file_path: "data/autompg/auto-mpg.xlsx"
+task_type: 'regression'

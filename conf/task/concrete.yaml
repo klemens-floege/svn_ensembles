@@ -1,0 +1,6 @@
+
+dataset: "concrete"
+
+dim_problem: 1
+file_path: "data/concrete/Concrete_Data.xls"
+task_type: 'regression'

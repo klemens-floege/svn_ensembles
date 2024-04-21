@@ -1,0 +1,6 @@
+
+dataset: "naval"
+
+dim_problem: 2
+file_path: "data/naval/data.xlsx"
+task_type: 'regression'
