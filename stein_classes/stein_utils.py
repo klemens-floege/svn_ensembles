@@ -39,6 +39,9 @@ def calc_loss(modellist, batch,
     if cfg.task.task_type == 'regression':
         loss = 0.5 * torch.mean((targets_expanded - pred_reshaped) ** 2, dim=1)
     elif cfg.task.task_type == 'classification':
+
+        #print('targets_expanded', targets_expanded)
+        #print('preds: ', pred_reshaped)
         
         loss = (-(targets_expanded *torch.log(pred_reshaped+1e-15))).max(2)[0].sum(1)
 

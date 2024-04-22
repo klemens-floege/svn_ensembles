@@ -139,9 +139,10 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
             total_entropy += entropy.item()
             total_samples += inputs.size(0)
 
-    
+
+    eval_accuracy = total_correct / total_samples    
     eval_cross_entropy = total_loss / total_samples
     eval_entropy = total_entropy / total_samples
     eval_NLL = total_nll / total_samples  # Average NLL per data point
 
-    return eval_cross_entropy, eval_entropy, eval_NLL
+    return eval_accuracy, eval_cross_entropy, eval_entropy, eval_NLL
