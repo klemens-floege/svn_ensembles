@@ -10,7 +10,7 @@ experiment:
 
   num_epochs: 50
   batch_size: 16 
-  lr: 0.001
+  lr: 0.01
   kernel_width: 0.01
   early_stop_epochs: 5
 

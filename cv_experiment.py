@@ -78,7 +78,11 @@ def run_experiment(cfg):
     x_combined = np.concatenate((x_train, x_test), axis=0)
     y_combined = np.concatenate((y_train, y_test), axis=0)
 
-    n_metrics = 3 # metrics to track across folds
+    if cfg.task.task_type == 'regression':
+        n_metrics = 3 # metrics to track across folds
+    elif cfg.task.task_type == 'classification':
+        n_metrics = 4 # metrics to track across folds
+
     metrics_array = np.zeros((n_splits, n_metrics)) # Store metrics from each fold
     
     for fold, (train_idx, test_idx) in enumerate(kf.split(x_combined)):
@@ -87,7 +91,7 @@ def run_experiment(cfg):
         # Split data into training and validation for this fold
         x_train_fold, x_test_fold = x_combined[train_idx], x_combined[test_idx]
         y_train_fold, y_test_fold = y_combined[train_idx], y_combined[test_idx]
-
+ 
         scaler = StandardScaler()
         x_train_fold = scaler.fit_transform(x_train_fold)
         x_test_fold = scaler.transform(x_test_fold)
@@ -128,16 +132,16 @@ def run_experiment(cfg):
         avg_train_time_per_epoch = train(modellist, cfg.experiment.lr, cfg.experiment.num_epochs, train_dataloader, eval_dataloader, device, cfg)
         
         #test_MSE, test_rmse, test_nll = evaluate_modellist(modellist, dataloader=test_dataloader, device=device)
-        metric1, metric2, metric2 = None, None, None
+        #metric1, metric2, metric3 = None, None, None
 
         if cfg.task.task_type == 'regression':
             test_MSE, test_rmse, test_nll = regression_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
             metric1, metric2, metric3 =  test_MSE, test_rmse, test_nll
             print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
         elif cfg.task.task_type == 'classification':
-            test_cross_entropy, test_entropy, test_nll = classification_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
+            test_accuracy, test_cross_entropy, test_entropy, test_nll = classification_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
             metric1, metric2, metric3 = test_cross_entropy, test_entropy, test_nll
-            print(f"Test CrossEntropy: {test_cross_entropy:.4f}, Test  Entropy: {test_entropy:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
+            print(f"Acc: {test_accuracy:.4f}, Test CrossEntropy: {test_cross_entropy:.4f}, Test  Entropy: {test_entropy:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
          
         
     
@@ -156,7 +160,10 @@ def run_experiment(cfg):
             avg_train_time_per_epoch = avg_train_time_per_epoch.cpu()
 
         #metrics_array[fold] = [test_MSE, test_nll, avg_train_time_per_epoch]
-        metrics_array[fold] = [metric1, metric3, avg_train_time_per_epoch]
+        if cfg.task.task_type == 'regression':
+            metrics_array[fold] = [test_MSE, test_nll, avg_train_time_per_epoch]
+        elif cfg.task.task_type == 'classification':
+            metrics_array[fold] = [test_accuracy,test_cross_entropy,  test_nll, avg_train_time_per_epoch]
         
 
         if fold== 0 and cfg.task.dataset in  ["sine", "gap"]: 
@@ -193,5 +200,5 @@ def run_experiment(cfg):
     if cfg.task.task_type == 'regression':
         print(f"Average Test MSE: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Average Test NLL: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f},  Avg Time / Epoch: {metrics_mean[2]:.2f} ± {metrics_std[2]:.2f}")
     elif cfg.task.task_type == 'classification':
-        print(f"Average Test CrossEntr: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Average NLL: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f},  Avg Time / Epoch: {metrics_mean[2]:.2f} ± {metrics_std[2]:.2f}")
+        print(f"Avg Test Accuracy: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Avg Test CrossEntr: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f}, Avg NLL: {metrics_mean[2]:.2f} ± {metrics_std[2]:.2f},  Avg Time / Epoch: {metrics_mean[3]:.2f} ± {metrics_std[3]:.2f}")
     

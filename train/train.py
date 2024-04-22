@@ -86,9 +86,9 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
       best_metric_tracker = eval_MSE
       print(f"Epoch {epoch}: MSE: {eval_MSE:.4f}, RMSE: {eval_rmse:.4f}, NLL: {eval_NLL:.4f}")
     elif cfg.task.task_type == 'classification':
-      eval_cross_entropy, eval_entropy, eval_NLL = classification_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
+      eval_accuracy, eval_cross_entropy, eval_entropy, eval_NLL = classification_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
       best_metric_tracker = eval_cross_entropy
-      print(f"Epoch {epoch}: CrossEntr: {eval_cross_entropy:.4f}, Enrtr: {eval_entropy:.4f}, NLL: {eval_NLL:.4f}")
+      print(f"Epoch {epoch}: Acc: {eval_accuracy:.4f}, CrossEntr: {eval_cross_entropy:.4f}, Enrtr: {eval_entropy:.4f}, NLL: {eval_NLL:.4f}")
 
     
 
