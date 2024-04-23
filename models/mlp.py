@@ -25,10 +25,12 @@ def initliase_mlp_models(input_dim, output_dim, config):
             
         if config.task.task_type == 'classification':
         # For classification, typically use a softmax for multi-class or sigmoid for binary classification
+            #layers.append(torch.nn.Lambda(lambda x: print("Before softmax:", x) or x))
+
             if output_dim == 1:
                 layers.append(torch.nn.Sigmoid())  # Binary classification
             else:
-                layers.append(torch.nn.Softmax(dim=1))  # Multi-class classification
+                layers.append(torch.nn.Softmax(dim=-1))  # Multi-class classification
                 
                 #self.layer2 = nn.Linear(64, n_classes)  # output layer with a neuron for each class
                 #self.softmax = nn.Softmax(dim=1)  # Softmax over the second dimension
