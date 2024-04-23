@@ -1,6 +1,8 @@
-import torch
 import scipy
 import numpy as np
+
+import torch
+import torch.nn.functional as F
  
 
 def calc_loss(modellist, batch,
@@ -35,16 +37,42 @@ def calc_loss(modellist, batch,
     assert targets.shape[1] == 1 and targets.shape[0] == batch_size
     
     targets_expanded = targets.expand(n_particles, targets.shape[0], dim_problem)
+    
 
     if cfg.task.task_type == 'regression':
+        
         loss = 0.5 * torch.mean((targets_expanded - pred_reshaped) ** 2, dim=1)
+
     elif cfg.task.task_type == 'classification':
 
-        #print('targets_expanded', targets_expanded)
-        #print('preds: ', pred_reshaped)
+        #print('targets', targets)
+        #print('targets_expanded', targets_expanded.shape)
+        #print('preds: ', pred_reshaped.shape)
+        #print('preds 0: ', pred_reshaped[0])
+        #print('softmax 1: ', F.log_softmax(pred_reshaped[0]))
+        #print('softmax 2: ', F.log_softmax(pred_reshaped[0],dim=1))
+        #print('targets: ', targets.squeeze(1))
         
-        loss = (-(targets_expanded *torch.log(pred_reshaped+1e-15))).max(2)[0].sum(1)
+        #print('1 :',torch.log(pred_reshaped+1e-15).shape )
+        #print(targets_expanded *torch.log(pred_reshaped+1e-15))
+        #print((-(targets_expanded *torch.log(pred_reshaped+1e-15))).max(2))
+        #loss_fn = torch.nn.CrossEntropyLoss(weg)
+        
+        #loss = torch.stack([F.nll_loss(p, targets.argmax(1)) for p in pred_reshaped])
 
+        loss = torch.stack([F.cross_entropy(pred_reshaped[i], targets.squeeze(1).long()) for i in range(pred_reshaped.size(0))])
+        #loss = torch.stack([F.nll_loss(F.softmax(p, dim=1), targets.squeeze(1).long()) for p in pred_reshaped])
+        
+        #print('loss: ', loss)
+
+        #loss = (-(targets_expanded *torch.log(pred_reshaped+1e-15))).max(2)[0].sum(1) / inputs.shape[0]
+        #print(targets.shape)
+        #loss_list = [loss_fn(particle_pred, targets) for particle_pred in pred_reshaped]
+        
+        #loss = loss_fn(pred_reshaped, targets_expanded)
+        #loss = torch.cat(loss_list, dim=0)
+        
+        #loss = 0.5 * torch.mean((targets_expanded - pred_reshaped) ** 2, dim=1)
 
 
 

@@ -5,10 +5,10 @@ defaults:
 
 experiment:
   seed: 10
-  n_splits: 5
+  n_splits: 2
   n_samples: 400
 
-  num_epochs: 50
+  num_epochs: 1
   batch_size: 16 
   lr: 0.01
   kernel_width: 0.01

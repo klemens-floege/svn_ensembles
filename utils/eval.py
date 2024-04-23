@@ -95,11 +95,12 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
             for i in range(n_particles):
                 
                 logits = modellist[i](inputs)
-                probabilities = torch.nn.functional.softmax(logits, dim=1)
-                pred_list.append(probabilities)
+                #probabilities = torch.nn.functional.softmax(logits, dim=1)
+                pred_list.append(modellist[i](inputs))
 
             pred = torch.cat(pred_list, dim=0)
             pred_reshaped = pred.view(n_particles, batch_size, dim_problem) # Stack to get [n_particles, batch_size, dim_problem]
+
 
             # Mean prediction
             ensemble_pred = torch.mean(pred_reshaped, dim=0) 
@@ -115,22 +116,24 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
             # Ensure resulting shape is [batch_size, 1]
             assert targets.shape[1] == 1 and targets.shape[0] == batch_size
 
-
-             # Variance as a proxy for uncertainty
+            # Variance as a proxy for uncertainty
             ensemble_variance = pred_reshaped.var(dim=0) + 1e-6  # Adding a small constant for numerical stability
 
             targets = targets.squeeze(1).long()  # Squeeze and convert to Long if necessary
-
-
+        
             loss = torch.nn.functional.cross_entropy(ensemble_pred, targets)
             total_loss += loss.item()
 
+          
             _, predicted_labels = torch.max(ensemble_pred, 1)
+          
             
             entropy = -(ensemble_pred * torch.log(ensemble_pred + 1e-6)).sum(dim=1).mean()
+            
 
-            log_probs = torch.log(ensemble_pred + 1e-6)  # Adding a small constant to prevent log(0)
-            nll = -log_probs[range(targets.size(0)), targets].mean()  # Negative log-likelihood
+            log_pred_reshaped = torch.log(pred_reshaped + 1e-15)
+            nll = torch.stack([torch.nn.functional.nll_loss(p, targets) for p in log_pred_reshaped])
+            
 
             
             total_correct += (predicted_labels == targets).sum().item()
