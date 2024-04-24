@@ -25,10 +25,6 @@ def regression_evaluate_modellist(modellist, dataloader, device, config):
             for i in range(n_particles):
                 if config.task.task_type == 'regression': 
                     pred_list.append(modellist[i].forward(inputs))
-                elif config.task.task_type == 'classification': 
-                    logits = modellist[i](inputs)
-                    probabilities = torch.nn.functional.softmax(logits, dim=1)
-                    pred_list.append(probabilities)
 
             pred = torch.cat(pred_list, dim=0)
             pred_reshaped = pred.view(n_particles, batch_size, dim_problem) # Stack to get [n_particles, batch_size, dim_problem]
@@ -50,6 +46,8 @@ def regression_evaluate_modellist(modellist, dataloader, device, config):
 
              # Variance as a proxy for uncertainty
             ensemble_variance = pred_reshaped.var(dim=0) + 1e-6  # Adding a small constant for numerical stability
+
+    
 
 
             mse_loss = (ensemble_pred - targets) ** 2
@@ -96,7 +94,7 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
                 
                 logits = modellist[i](inputs)
                 #probabilities = torch.nn.functional.softmax(logits, dim=1)
-                pred_list.append(modellist[i](inputs))
+                pred_list.append(modellist[i].forward(inputs))
 
             pred = torch.cat(pred_list, dim=0)
             pred_reshaped = pred.view(n_particles, batch_size, dim_problem) # Stack to get [n_particles, batch_size, dim_problem]

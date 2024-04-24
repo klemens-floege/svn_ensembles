@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - task: "sine" # "sine", "gap" "yacht" "energy" "autompg" "concrete" "parkinsons"
+  - task: "yacht" # "sine", "gap" "yacht" "energy" "autompg" "concrete" "parkinsons"
 
 
 experiment:
@@ -23,7 +23,7 @@ experiment:
 
   hidden_layers: [50, 50]
 
-  method: "SVN" # "SVN", "SVGD", "Ensemble"
+  method: "SVN" # "SVN", "SVGD", "Ensemble" 
   n_particles: 5
 
 SVN: 

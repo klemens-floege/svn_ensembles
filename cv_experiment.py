@@ -46,9 +46,9 @@ def run_experiment(cfg):
     print(cfg.task.dataset)
 
     if cfg.task.dataset == "sine":
-        x_train, y_train, x_test, y_test = get_sine_data(n_samples=cfg.experiment.n_samples, seed= cfg.experiment.seed, config=cfg)
+        x_train, y_train, x_test, y_test = get_sine_data(n_samples=cfg.experiment.n_samples, seed= cfg.experiment.seed)
     elif cfg.task.dataset == "gap":
-        x_train, y_train, x_test, y_test = get_gap_data(n_samples=cfg.experiment.n_samples, seed= cfg.experiment.seed, config=cfg)
+        x_train, y_train, x_test, y_test = get_gap_data(n_samples=cfg.experiment.n_samples, seed= cfg.experiment.seed)
     elif cfg.task.dataset == "yacht":
         x_train, y_train, x_test, y_test = load_yacht_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     elif cfg.task.dataset == "energy":
