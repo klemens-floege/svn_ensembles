@@ -6,7 +6,7 @@ import numpy as np
 
 from laplace import FullLaplace, KronLaplace, DiagLaplace, LowRankLaplace
 
-from stein_classes.stein_utils import calc_loss, hessian_matvec
+from stein_classes.stein_utils import calc_loss, hessian_matvec, hessian_matvec_block
 
 
 def apply_SVN(modellist, parameters, 
@@ -53,13 +53,18 @@ def apply_SVN(modellist, parameters,
             laplace_particle_model = LowRankLaplace(modellist[i], likelihood='regression')
             laplace_particle_model.fit(hessian_particle_loader)
             Hessian = laplace_particle_model.posterior_precision
+            #print(type(Hessian)) #<class 'tuple'> 
+            #print(Hessian)
 
-            print(len(Hessian))
-            print(len(Hessian[0]))
+            print(len(Hessian)) # 2, (weights and biases)
+            print(Hessian[0].shape)
+            print(Hessian[1].shape)
             print(Hessian[0][0].shape) #torch.Size([1021, 7])
             print(Hessian[0][1].shape) #torch.Size([7])
             print(Hessian[1][0].shape) #torch.Size([])
             print(Hessian[1][1].shape) #torch.Size([])
+            
+            wegw
 
         elif cfg.SVN.hessian_calc == "Kron":  
             laplace_particle_model = KronLaplace(modellist[i], likelihood='regression')
@@ -110,6 +115,7 @@ def apply_SVN(modellist, parameters,
     
 
     grad_K = -2 * (K_XX.unsqueeze(-1) * displacement_tensor) / h  #(n_particles, n_particles, n_parameters)
+
     
     v_svgd = -1 * torch.einsum('mn, mo -> no', K_XX, score_func_tensor) / n_particles + torch.mean(grad_K, dim=0) #(n_particles, n_parameters)
 
@@ -131,13 +137,29 @@ def apply_SVN(modellist, parameters,
         # Create a linear operator that represents your Hessian vector product: Hx
         N = n_particles
         D = n_parameters
-        H_op = scipy.sparse.linalg.LinearOperator((N*D, N*D), matvec=lambda x: hessian_matvec(x, K_XX, kron_list, H2, n_parameters))
+        
+        if cfg.SVN.block_diag_approx:
+            alpha_list = []
+            cg_maxiter = 50     
+            for i in range(n_particles):
+                v_svgd_part = v_svgd[i].squeeze().detach().cpu().flatten().numpy()
+                squared_kernel = K_XX**2
+                kernels_grads = torch.matmul(grad_K[i].T, grad_K[i])
+                H_op_part = scipy.sparse.linalg.LinearOperator((D, D), matvec=lambda x: hessian_matvec_block(x, squared_kernel[i][i],kernels_grads, kron_list[i]))
+                alpha_part, _ = scipy.sparse.linalg.cg(H_op_part, v_svgd_part, maxiter=cg_maxiter)
+                alpha_part = torch.tensor(alpha_part, dtype=torch.float32).to(device)
+                alpha_list.append(alpha_part)
+            alphas = torch.stack(alpha_list, dim=0).view(n_particles, -1)
+            alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
+            v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
+        else: 
+            H_op = scipy.sparse.linalg.LinearOperator((N*D, N*D), matvec=lambda x: hessian_matvec(x, K_XX,grad_K, kron_list, H2, n_parameters))
 
 
     solve_method = 'CG'
     # solve_method = 'Cholesky'
 
-    if solve_method == 'CG':
+    if solve_method == 'CG' and not cfg.SVN.block_diag_approx:
         
         cg_maxiter = 50        
 
@@ -145,15 +167,11 @@ def apply_SVN(modellist, parameters,
         score_func_numpy = score_func_tensor.detach().cpu().flatten().numpy()
 
         alphas, _ = scipy.sparse.linalg.cg(H_op, v_svgd_numpy, maxiter=cg_maxiter)
-        #alphas, _ = scipy.sparse.linalg.cg(H_op, v_svgd_numpy, maxiter=cg_maxiter)
-
-        alphas = torch.tensor(alphas, dtype=torch.float32).reshape(n_particles, n_parameters).to(device)
-                
+        alphas = torch.tensor(alphas, dtype=torch.float32).reshape(n_particles, n_parameters).to(device)                
         alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
         
         v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
-        #if cfg.SVN.hessian_calc == "Kron":
-        #    v_svn = alphas_reshaped
+
 
 
     elif solve_method == 'Cholesky':

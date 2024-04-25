@@ -98,10 +98,16 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
         epochs_since_improvement = 0
         best_epoch = epoch  # To track the epoch number of the best MSE
         best_modellist_state = copy.deepcopy(modellist)  # Deep copy to save the state
-        print("New best MSE, model saved.")
+        if cfg.task.task_type == 'regression':
+          print("New best MSE, model saved.")
+        elif cfg.task.task_type == 'classification':
+          print("New best CrossEntropy, model saved.")
     else:
         epochs_since_improvement += 1
-        print(f"No improvement in MSE for {epochs_since_improvement} epochs.")
+        if cfg.task.task_type == 'regression':
+          print(f"No improvement in MSE for {epochs_since_improvement} epochs.")
+        elif cfg.task.task_type == 'classification':
+          print(f"No improvement in CrossEntropy for {epochs_since_improvement} epochs.")
 
 
 

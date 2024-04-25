@@ -2,6 +2,8 @@ import torch
 import numpy as np
 from tqdm import tqdm  
 
+import torch.nn.functional as F
+
 # Evaluation loop
 def regression_evaluate_modellist(modellist, dataloader, device, config):
     
@@ -12,6 +14,7 @@ def regression_evaluate_modellist(modellist, dataloader, device, config):
     total_mse = 0.0
     total_nll = 0.0  # Initialize total NLL
     total_samples = 0
+    n_batches = 0
 
     for step, batch in enumerate(tqdm(dataloader)):
         with torch.no_grad():
@@ -45,26 +48,45 @@ def regression_evaluate_modellist(modellist, dataloader, device, config):
 
 
              # Variance as a proxy for uncertainty
-            ensemble_variance = pred_reshaped.var(dim=0) + 1e-6  # Adding a small constant for numerical stability
+            ensemble_variance = pred_reshaped.var(dim=0) + 1e-6  # Adding a small constant for numerical stability #[batch_size, dim_problem]
 
-    
+            #print('var', ensemble_variance.shape)
 
+            loss_fn = torch.nn.MSELoss(reduction="none") 
+            #mse = F.mse_loss(ensemble_pred, targets)
+            mse = loss_fn(ensemble_pred, targets)
+            #constant_term = 0.5 * torch.log(2 * torch.pi * ensemble_variance)
+            #normalized_sq_error = ((ensemble_pred - targets) ** 2) / (2 * ensemble_variance)
+            #nll = torch.mean(constant_term + normalized_sq_error)  # mean over batch
+            
+            #print("pred: ", ensemble_pred)
+            #print("targets: ", targets)
+            #print("mse", mse)
 
-            mse_loss = (ensemble_pred - targets) ** 2
-            loss = mse_loss
+            #mse_loss = (ensemble_pred - targets) ** 2 #/ batch_size
+            loss = mse
+
+            #print('mse_loss', mse)
+            #print(constant_term)
+            #print(normalized_sq_error)
+            #print('nll: ', nll)
             
             # NLL assuming Gaussian distribution
-            nll_loss = 0.5 * torch.log(2 * np.pi * ensemble_variance) + (loss / (2 * ensemble_variance))
+            nll_loss = 0.5 * torch.log(2 * np.pi * ensemble_variance) + (loss / (2 * ensemble_variance)) #/ batch_size
             total_nll += nll_loss.sum().item()
 
-            total_mse = loss.sum() 
+            total_mse = mse.sum() 
             total_samples += inputs.size(0)
 
+            n_batches+= 1
+
     
-    eval_MSE = total_mse / total_samples
+    eval_MSE = total_mse / n_batches
+    #eval_MSE = total_mse / n_batches
     eval_RMSE = torch.sqrt(eval_MSE.clone().detach())
     #eval_RMSE = np.sqrt(eval_MSE)
     eval_NLL = total_nll / total_samples  # Average NLL per data point
+    #eval_NLL = total_nll / n_batches  # Average NLL per data point
 
     return eval_MSE, eval_RMSE, eval_NLL
     
@@ -90,11 +112,14 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
             batch_size = inputs.shape[0]
             
             pred_list = []
-            for i in range(n_particles):
+            for model in modellist:
                 
-                logits = modellist[i](inputs)
-                #probabilities = torch.nn.functional.softmax(logits, dim=1)
-                pred_list.append(modellist[i].forward(inputs))
+                logits = model.forward(inputs) 
+                if config.task.dim_problem == 1:
+                    probabilities = F.Sigmoid(logits)  # Binary classification
+                else:
+                    probabilities = F.softmax(logits, dim=-1)# Multi-class classification
+                pred_list.append(probabilities)
 
             pred = torch.cat(pred_list, dim=0)
             pred_reshaped = pred.view(n_particles, batch_size, dim_problem) # Stack to get [n_particles, batch_size, dim_problem]
