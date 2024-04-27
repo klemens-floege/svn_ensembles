@@ -135,13 +135,13 @@ def run_experiment(cfg):
         #metric1, metric2, metric3 = None, None, None
 
         if cfg.task.task_type == 'regression':
-            test_MSE, test_rmse, test_nll = regression_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
+            test_MSE, test_rmse, test_nll = regression_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
             metric1, metric2, metric3 =  test_MSE, test_rmse, test_nll
             print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
         elif cfg.task.task_type == 'classification':
-            test_accuracy, test_cross_entropy, test_entropy, test_nll = classification_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
+            test_accuracy, test_cross_entropy, test_entropy, test_nll = classification_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
             metric1, metric2, metric3 = test_cross_entropy, test_entropy, test_nll
-            print(f"Acc: {test_accuracy:.4f}, Test CrossEntropy: {test_cross_entropy:.4f}, Test  Entropy: {test_entropy:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
+            print(f"Test Acc: {test_accuracy:.4f}, Test CrossEntropy: {test_cross_entropy:.4f}, Test  Entropy: {test_entropy:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
          
         
     
@@ -182,7 +182,7 @@ def run_experiment(cfg):
             full_save_path = f"{save_path}/{plot_name}"
             print("Save path:", full_save_path)
         
-            plot_modellist(modellist, x_train, y_train, x_test, y_test, full_save_path)
+            plot_modellist(modellist, x_train_split, y_train_split, x_test, y_test, full_save_path)
 
 
     

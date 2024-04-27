@@ -236,7 +236,7 @@ def hessian_matvec(input, K_XX, grad_K, kron_list, H2, n_parameters):
 
 
 #Blockwise Hessian Matrix Block for KFAC computation
-def hessian_matvec_block(input, squared_kernel, kernels_grads, kron):
+def kfac_hessian_matvec_block(input, squared_kernel, kernels_grads, kron):
 
 
         input = torch.tensor(input).float()
@@ -244,6 +244,21 @@ def hessian_matvec_block(input, squared_kernel, kernels_grads, kron):
         kernel_grads_vector = torch.matmul(kernels_grads, input)
         kernel_weght_param_vector = squared_kernel * input
         hess_vector = compute_KFACx(kron, kernel_weght_param_vector)
+        
+        update = hess_vector + kernel_grads_vector
+
+
+        return update.detach().numpy()
+
+#Blockwise Hessian Matrix Block for KFAC computation
+def diag_hessian_matvec_block(input, squared_kernel, kernels_grads, diag_hessian):
+
+
+        input = torch.tensor(input).float()
+
+        kernel_grads_vector = torch.matmul(kernels_grads, input)
+        kernel_weght_param_vector = squared_kernel * input
+        hess_vector = diag_hessian * kernel_weght_param_vector
         
         update = hess_vector + kernel_grads_vector
 
