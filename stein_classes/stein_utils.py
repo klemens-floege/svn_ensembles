@@ -1,8 +1,10 @@
-import torch
 import scipy
 import numpy as np
- 
 
+import torch
+import torch.nn.functional as F
+ 
+#train_Dataloader is uselesss
 def calc_loss(modellist, batch,
               train_dataloader, cfg, device):
 
@@ -17,8 +19,16 @@ def calc_loss(modellist, batch,
     
     pred_list = []
 
-    for i in range(n_particles):
-        pred_list.append(modellist[i].forward(inputs))
+    for model in modellist:
+        logits = model.forward(inputs)
+        if cfg.task.task_type == 'regression':
+            pred_list.append(logits)
+        elif cfg.task.task_type == 'classification':
+            if cfg.task.dim_problem == 1:
+                probabilities = F.sigmoid(logits)  # Binary classification
+            else:
+                probabilities = F.softmax(logits, dim=-1)  # Multi-class classification
+            pred_list.append(probabilities)
 
     pred = torch.cat(pred_list, dim=0)
     pred_reshaped = pred.view(n_particles, batch_size, dim_problem) # Stack to get [n_particles, batch_size, dim_problem]
@@ -35,17 +45,20 @@ def calc_loss(modellist, batch,
     assert targets.shape[1] == 1 and targets.shape[0] == batch_size
     
     targets_expanded = targets.expand(n_particles, targets.shape[0], dim_problem)
+    
 
     if cfg.task.task_type == 'regression':
+        
         loss = 0.5 * torch.mean((targets_expanded - pred_reshaped) ** 2, dim=1)
+
     elif cfg.task.task_type == 'classification':
 
-        #print('targets_expanded', targets_expanded)
-        #print('preds: ', pred_reshaped)
         
-        loss = (-(targets_expanded *torch.log(pred_reshaped+1e-15))).max(2)[0].sum(1)
+        #loss = torch.stack([F.nll_loss(p, targets.argmax(1)) for p in pred_reshaped])
 
-
+        loss = torch.stack([F.cross_entropy(pred_reshaped[i], targets.squeeze(1).long()) for i in range(pred_reshaped.size(0))])
+        #loss = torch.stack([F.nll_loss(F.softmax(p, dim=1), targets.squeeze(1).long()) for p in pred_reshaped])
+        
 
 
     pred_dist_std = cfg.SVN.red_dist_std
@@ -56,6 +69,17 @@ def calc_loss(modellist, batch,
     return loss, log_prob
 
 
+from joblib import Parallel, delayed
+
+def parallel_kfac(kron_list, current_parameter_vector, n_particles):
+    # Function to compute KFAC for each particle
+    def compute(index):
+        return compute_KFACx(kron_list[index], current_parameter_vector)
+
+    # Execute computations in parallel
+    list_of_KFAC_hess = Parallel(n_jobs=-1)(delayed(compute)(i) for i in range(n_particles))
+
+    return list_of_KFAC_hess
 
 
 def apply_kron_eigen_decomp(eigenvalues_layer, eigenvectors_layer, x_partition):
@@ -78,18 +102,29 @@ def apply_kron_eigen_decomp(eigenvalues_layer, eigenvectors_layer, x_partition):
     lambda_Q = lambda_Q.float()
     V_K = V_K.float()
     V_Q = V_Q.float()
-    x_partition = x_partition.float()
+    x_partition = x_partition.float() #flat vector 
+    
 
     dim_K = V_K.size(0)
     dim_Q = V_Q.size(0)
 
-    x_reshaped = x_partition.view(dim_Q, dim_K)
+    x_matrix = x_partition.view(dim_Q, dim_K)
 
     # Reconstruct matrix representations from eigenvalues and eigenvectors
-    matrix_Q = torch.matmul(V_Q, torch.matmul(torch.diag(lambda_Q), V_Q.T))
-    matrix_K = torch.matmul(V_K, torch.matmul(torch.diag(lambda_K), V_K.T))
-    kronecker_product = torch.kron(matrix_Q, matrix_K)
-    result = torch.matmul(kronecker_product, x_partition)
+    #matrix_K = torch.matmul(V_K, torch.matmul(torch.diag(lambda_K), V_K.T)) #Large Factor
+    #matrix_Q = torch.matmul(V_Q, torch.matmul(torch.diag(lambda_Q), V_Q.T)) #Small Factor
+    
+    #Use vectorization trick and use that K, V are symmetric
+    #result = torch.matmul(torch.matmul(matrix_Q, x_matrix), matrix_K).flatten()
+
+    #Likely Better
+    #1. Tranform X to Eigenspace of Q and K 
+    x_prime = torch.matmul(torch.matmul(V_Q.T, x_matrix), V_K)
+    #2. Scale by Eigenvalues
+    x_double_prime = (lambda_Q.unsqueeze(1) * x_prime) * lambda_K.unsqueeze(0)
+    # Step 3: Transform x_double_prime back from the eigenspaces
+    result = torch.matmul(torch.matmul(V_Q, x_double_prime), V_K.T)
+    
 
     #step1 = torch.matmul(V_Q, torch.matmul(torch.diag(lambda_Q), V_Q.T))
     #intermediate_result = torch.matmul(step1, x_reshaped)
@@ -130,7 +165,7 @@ def compute_KFACx(kron_decomposed, x):
 
             # Extract the relevant partition of x and compute matmul with Kronecker product
             x_partition = x[x_index:x_index + partition_size]
-            x_partition = torch.tensor(x_partition)
+            x_partition = x_partition
             x_partition.float()
             layer_result = apply_kron_eigen_decomp(eigenvalues_layer, eigenvectors_layer, x_partition)
             
@@ -141,7 +176,7 @@ def compute_KFACx(kron_decomposed, x):
             V_bias = eigenvectors_layer[0]
             partition_size = lambda_bias.numel()
       
-            x_partition = torch.tensor(x[x_index:x_index + partition_size], dtype=torch.float32)
+            x_partition = x[x_index:x_index + partition_size]
             V_bias = V_bias.clone().detach().to(dtype=torch.float32)
             lambda_bias = lambda_bias.clone().detach().to(dtype=torch.float32)
 
@@ -161,23 +196,33 @@ def compute_KFACx(kron_decomposed, x):
     
     return result_tensor
 
-def hessian_matvec(input, K_XX, kron_list, H2, n_parameters):
+
+
+def hessian_matvec(input, K_XX, grad_K, kron_list, H2, n_parameters):
 
         n_particles = len(kron_list)
         result = torch.zeros_like(torch.tensor(input))
-
+        input = torch.tensor(input).float()
 
         # Now, use transformed_eigenvalues for further operations or aggregation
         # This involves broadcasting K_XX across the dimensions where it is needed
         weights = K_XX[:, :, None] * K_XX[:, None, :]  # Shape: [n_particles, n_particles, n_particles]
         
+        
+        for z in range(n_particles):
+            current_parameter_vector = input[n_parameters*z: n_parameters*(z+1)]
 
-        for y in range(n_particles):
-            for z in range(n_particles):
-                current_parameter_vector = input[n_parameters*z: n_parameters*(z+1)]
+            list_of_KFAC_hess = []
+            for x in range(n_particles):
+                list_of_KFAC_hess.append(compute_KFACx(kron_list[x], current_parameter_vector))
+            
+            #This was slower
+            #list_of_KFAC_hess = parallel_kfac(kron_list, current_parameter_vector, n_particles)
+
+            for y in range(n_particles):
+                #can be implmented faster
                 for x in range(n_particles):
-                    
-                    result[n_parameters*y: n_parameters*(y+1)] += weights[x, y, z] * compute_KFACx(kron_list[x], current_parameter_vector)
+                    result[n_parameters*y: n_parameters*(y+1)] += weights[x, y, z] * list_of_KFAC_hess[x]
 
                 #TODO: double check intendation:
                 if z == y:
@@ -187,3 +232,20 @@ def hessian_matvec(input, K_XX, kron_list, H2, n_parameters):
 
 
         return result.detach().numpy()
+
+
+
+#Blockwise Hessian Matrix Block for KFAC computation
+def hessian_matvec_block(input, squared_kernel, kernels_grads, kron):
+
+
+        input = torch.tensor(input).float()
+
+        kernel_grads_vector = torch.matmul(kernels_grads, input)
+        kernel_weght_param_vector = squared_kernel * input
+        hess_vector = compute_KFACx(kron, kernel_weght_param_vector)
+        
+        update = hess_vector + kernel_grads_vector
+
+
+        return update.detach().numpy()

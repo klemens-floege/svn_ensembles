@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - task: "sine" # "sine", "gap" "yacht" "energy" "autompg" "concrete" "parkinsons"
+  - task: "yacht" # "sine", "gap" "yacht" "energy" "autompg" "concrete" "parkinsons"
 
 
 experiment:
@@ -8,7 +8,7 @@ experiment:
   n_splits: 5
   n_samples: 400
 
-  num_epochs: 50
+  num_epochs: 1
   batch_size: 16 
   lr: 0.01
   kernel_width: 0.01
@@ -23,7 +23,7 @@ experiment:
 
   hidden_layers: [50, 50]
 
-  method: "SVN" # "SVN", "SVGD", "Ensemble"
+  method: "SVN" # "SVN", "SVGD", "Ensemble" 
   n_particles: 5
 
 SVN: 
@@ -33,3 +33,4 @@ SVN:
 
   hessian_calc: "Full" # "Full", "Diag", "Kron", "LowRank"
   solve_method: "CG" # "Cholesky"
+  block_diag_approx: False

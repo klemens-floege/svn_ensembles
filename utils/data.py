@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import torch
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
@@ -191,24 +192,19 @@ def load_parkinson_data(test_size_split, seed, config):
     print("Unique status classes:", unique_classes)
     print("Number of unique classes:", n_classes)
 
-    # Perform one-hot encoding for the target variable ("status" column)
-    encoder = OneHotEncoder(sparse=False, drop='first')  # Drop first column to avoid multicollinearity
-    encoded_status = encoder.fit_transform(data[['status']])
+    #assert n_classes == config.task.dim_problem
 
-    # Replace the original "status" column with the encoded version
-    data_encoded = data.drop(columns=['status'])
-    data_encoded['status'] = encoded_status[:, 0]  # Assuming there are only two classes
 
-    print("Number of columns after one-hot encoding:", len(data_encoded.columns))
+    # One-hot encode the "status" column and update the dataframe
+    encoder = OneHotEncoder(sparse=False, drop='first')  # Avoid multicollinearity by dropping first
+    data_encoded = data.copy()  # Create a copy to keep the original data intact
+    data_encoded['status'] = encoder.fit_transform(data[['status']]).ravel()  # Flatten array and assign
+
+    # Separating features and target variable
+    X = data_encoded.drop(columns=['status']).values  # Features: all columns except 'status'
+    y = data_encoded['status'].values  # Target variable: encoded 'status'
+
     
-    X = data.iloc[:, 1:].values  # Features: all columns except the first (target variable)
-    y = data.iloc[:, 0].values   # Target variable: the first column 'status'''
-
-    #X = data.drop(columns=['status']).values  # Features: all columns except 'status'
-    #y = data['status'].values  # Target variable: 'status' column
-
-    #X = data_encoded.iloc[:, :-1].values  # Features: all columns except the target variable
-    #y = data_encoded.iloc[:, -1].values   # Target variable: the last column
     
     
     x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
