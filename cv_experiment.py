@@ -145,15 +145,8 @@ def run_experiment(cfg):
          
         
     
-        #print(test_MSE)
-        #print(test_nll)
-        # Ensure test_MSE is a tensor and move to CPU
-        if isinstance(metric1, torch.Tensor):
-            metric1 = metric1.cpu()
-
-        # Ensure test_nll is a tensor and move to CPU
-        if isinstance(metric3, torch.Tensor):
-            metric3 = metric3.cpu()
+        
+        
 
         # Ensure avg_train_time_per_epoch is a tensor and move to CPU
         if isinstance(avg_train_time_per_epoch, torch.Tensor):
@@ -161,8 +154,19 @@ def run_experiment(cfg):
 
         #metrics_array[fold] = [test_MSE, test_nll, avg_train_time_per_epoch]
         if cfg.task.task_type == 'regression':
+            if isinstance(test_MSE, torch.Tensor):
+                test_MSE = test_MSE.cpu()
+            if isinstance(test_nll, torch.Tensor):
+                test_nll = test_nll.cpu()
             metrics_array[fold] = [test_MSE, test_nll, avg_train_time_per_epoch]
+
         elif cfg.task.task_type == 'classification':
+            if isinstance(test_accuracy, torch.Tensor):
+                test_accuracy = test_accuracy.cpu()
+            if isinstance(test_cross_entropy, torch.Tensor):
+                test_cross_entropy = test_cross_entropy.cpu()
+            if isinstance(test_nll, torch.Tensor):
+                test_nll = test_nll.cpu()
             metrics_array[fold] = [test_accuracy,test_cross_entropy,  test_nll, avg_train_time_per_epoch]
         
 
