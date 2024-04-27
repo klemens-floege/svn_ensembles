@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from utils.kernel import RBF
 from utils.data import get_sine_data, get_gap_data, load_yacht_data
 from utils.plot import plot_modellist
-from utils.eval import evaluate_modellist
+from utils.eval import regression_evaluate_modellist, classification_evaluate_modellist
 from train.train import train
 
 
@@ -35,12 +35,10 @@ class Dataset(Dataset):
 def run_experiment(cfg):
 
 
-    if cfg.experiment.dataset == "sine":
+    if cfg.task.dataset == "sine":
         x_train, y_train, x_test, y_test = get_sine_data(n_samples=cfg.experiment.n_samples, seed= cfg.experiment.seed)
-    elif cfg.experiment.dataset == "gap":
+    elif cfg.task.dataset == "gap":
         x_train, y_train, x_test, y_test = get_gap_data(n_samples=cfg.experiment.n_samples, seed= cfg.experiment.seed)
-    elif cfg.experiment.dataset == "yacht":
-        x_train, y_train, x_test, y_test = load_yacht_data(test_size_split=cfg.experiment.train_test_split, seed=cfg.experiment.seed)
     else: 
         ValueError("The configured dataset is not yet implemented")
     
@@ -80,7 +78,7 @@ def run_experiment(cfg):
 
     
     # Split the data into training and evaluation sets
-    x_train_split, x_eval_split, y_train_split, y_eval_split = train_test_split(x_train, y_train, test_size=cfg.experiment.train_test_split, random_state=cfg.experiment.seed)
+    x_train_split, x_eval_split, y_train_split, y_eval_split = train_test_split(x_train, y_train, test_size=0.2, random_state=cfg.experiment.seed)
 
     # Create instances of the SineDataset for each set
     train_dataset = Dataset(x_train_split, y_train_split)
@@ -98,15 +96,15 @@ def run_experiment(cfg):
 
     avg_train_time_per_epoch = train(modellist, cfg.experiment.lr, cfg.experiment.num_epochs, train_dataloader, eval_dataloader, device, cfg)
         
-    test_MSE, test_rmse, test_nll = evaluate_modellist(modellist, dataloader=test_dataloader, device=device)
+    test_MSE, test_rmse, test_nll = regression_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
 
     print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
 
     
     #plot 1D regression datasets
-    if cfg.experiment.dataset in  ["sine", "gap"]:
+    if cfg.task.dataset in  ["sine", "gap"]:
         # Constructing the save path
-        save_path = "debug/" + cfg.experiment.dataset
+        save_path = "debug/" + cfg.task.dataset
         plot_name = cfg.experiment.method
         
         if cfg.experiment.method == "SVN":

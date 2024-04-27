@@ -6,7 +6,7 @@ import numpy as np
 
 from laplace import FullLaplace, KronLaplace, DiagLaplace, LowRankLaplace
 
-from stein_classes.stein_utils import calc_loss, hessian_matvec, hessian_matvec_block
+from stein_classes.stein_utils import calc_loss, hessian_matvec, kfac_hessian_matvec_block, diag_hessian_matvec_block
 
 
 def apply_SVN(modellist, parameters, 
@@ -37,10 +37,12 @@ def apply_SVN(modellist, parameters,
     
     
     hessians_list = []
+    diag_hessian_list = []
     kron_list = []
 
     for i in range(n_particles):
-        
+        #likelihood_type= cfg.task.task_type
+
         if cfg.SVN.hessian_calc == "Full":  
             laplace_particle_model = FullLaplace(modellist[i], likelihood='regression')
             laplace_particle_model.fit(hessian_particle_loader)
@@ -49,35 +51,30 @@ def apply_SVN(modellist, parameters,
             
         elif cfg.SVN.hessian_calc == "Diag":  
             laplace_particle_model = DiagLaplace(modellist[i], likelihood='regression')
-
-            laplace_particle_model = LowRankLaplace(modellist[i], likelihood='regression')
             laplace_particle_model.fit(hessian_particle_loader)
             Hessian = laplace_particle_model.posterior_precision
-            #print(type(Hessian)) #<class 'tuple'> 
-            #print(Hessian)
-
-            print(len(Hessian)) # 2, (weights and biases)
-            print(Hessian[0].shape)
-            print(Hessian[1].shape)
-            print(Hessian[0][0].shape) #torch.Size([1021, 7])
-            print(Hessian[0][1].shape) #torch.Size([7])
-            print(Hessian[1][0].shape) #torch.Size([])
-            print(Hessian[1][1].shape) #torch.Size([])
-            
-            wegw
+            diag_hessian_list.append(Hessian)
 
         elif cfg.SVN.hessian_calc == "Kron":  
             laplace_particle_model = KronLaplace(modellist[i], likelihood='regression')
             laplace_particle_model.fit(hessian_particle_loader)
             kron_decomposed = laplace_particle_model.posterior_precision
-
-
             kron_list.append(kron_decomposed)
 
         elif cfg.SVN.hessian_calc == "LowRank":  
             laplace_particle_model = LowRankLaplace(modellist[i], likelihood='regression')
             laplace_particle_model.fit(hessian_particle_loader)
             Hessian = laplace_particle_model.posterior_precision[0]
+            #print(type(Hessian)) #<class 'tuple'> 
+            #print(Hessian)
+
+            print(len(Hessian)) # 2, (weights and biases)
+            print(type(Hessian[0]))
+            print(type(Hessian[1]))
+            print(Hessian[0][0].shape) #torch.Size([1021, 7])
+            print(Hessian[0][1].shape) #torch.Size([7])
+            print(Hessian[1][0].shape) #torch.Size([])
+            print(Hessian[1][1].shape) #torch.Size([])
 
             print(Hessian)
             #print(Hessian.shape)
@@ -91,12 +88,20 @@ def apply_SVN(modellist, parameters,
         hessians_tensor = torch.cat(hessians_list, dim=0)
         hessians_tensor = hessians_tensor.reshape(n_particles, n_parameters, n_parameters) #(n_particles, n_parameters, n_parameters)
 
+    if cfg.SVN.hessian_calc == "Diag":  
+        hessians_tensor = torch.cat(diag_hessian_list, dim=0)
+        hessians_tensor = hessians_tensor.reshape(n_particles, n_parameters) #(n_particles, n_parameters)
+
+    
+
     #compute curvature matrix
     #TODO: implement kernel M for KFAC, Diag, 
     if cfg.SVN.use_curvature_kernel == "use_curvature":
         M = torch.mean(hessians_tensor, axis=0)
     else:
         M=None
+
+   
 
     param_tensors = [p.view(-1) for p in parameters]  # Flatten
     ensemble_parameters_tensor = torch.cat(param_tensors).view(n_particles, -1)  # Concatenate and reshape
@@ -107,9 +112,14 @@ def apply_SVN(modellist, parameters,
     displacement_tensor = ensemble_parameters_tensor[:, None, :] - ensemble_parameters_tensor[None, :, :]
     
     if M is not None:
-        U = torch.linalg.cholesky(M)
-        ensemble_parameters_tensor = torch.matmul(U, ensemble_parameters_tensor.T).T
-        displacement_tensor = torch.matmul(displacement_tensor, M)
+        if cfg.SVN.hessian_calc == "Full":  
+            U = torch.linalg.cholesky(M)
+            ensemble_parameters_tensor = torch.matmul(U, ensemble_parameters_tensor.T).T
+            displacement_tensor = torch.matmul(displacement_tensor, M)
+        elif cfg.SVN.hessian_calc == "Diag":  
+            ensemble_parameters_tensor = M * ensemble_parameters_tensor
+            displacement_tensor = displacement_tensor * M
+        
     squared_distances = torch.cdist(ensemble_parameters_tensor, ensemble_parameters_tensor, p=2) ** 2
     K_XX = torch.exp(-squared_distances / h) #(n_particles, n_particles)
     
@@ -132,6 +142,25 @@ def apply_SVN(modellist, parameters,
         H_reshaped = H1.permute(0, 2, 1, 3).reshape(N*D, N*D)  # Reshape to [N*D, N*D] ,  #(n_particles*n_parametes_per_model, n_particles*n_parametes_per_model)
         H =  H_reshaped / n_particles
         H_op = H.detach().cpu().numpy()
+    
+    elif cfg.SVN.hessian_calc == "Diag":  
+        N = n_particles
+        D = n_parameters
+        
+        if cfg.SVN.block_diag_approx:
+            alpha_list = []
+            cg_maxiter = 50     
+            for i in range(n_particles):
+                v_svgd_part = v_svgd[i].squeeze().detach().cpu().flatten().numpy()
+                squared_kernel = K_XX**2
+                kernels_grads = torch.matmul(grad_K[i].T, grad_K[i])
+                H_op_part = scipy.sparse.linalg.LinearOperator((D, D), matvec=lambda x: diag_hessian_matvec_block(x, squared_kernel[i][i],kernels_grads,hessians_tensor[i]))
+                alpha_part, _ = scipy.sparse.linalg.cg(H_op_part, v_svgd_part, maxiter=cg_maxiter)
+                alpha_part = torch.tensor(alpha_part, dtype=torch.float32).to(device)
+                alpha_list.append(alpha_part)
+            alphas = torch.stack(alpha_list, dim=0).view(n_particles, -1)
+            alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
+            v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
 
     elif cfg.SVN.hessian_calc == "Kron":          
         # Create a linear operator that represents your Hessian vector product: Hx
@@ -145,7 +174,7 @@ def apply_SVN(modellist, parameters,
                 v_svgd_part = v_svgd[i].squeeze().detach().cpu().flatten().numpy()
                 squared_kernel = K_XX**2
                 kernels_grads = torch.matmul(grad_K[i].T, grad_K[i])
-                H_op_part = scipy.sparse.linalg.LinearOperator((D, D), matvec=lambda x: hessian_matvec_block(x, squared_kernel[i][i],kernels_grads, kron_list[i]))
+                H_op_part = scipy.sparse.linalg.LinearOperator((D, D), matvec=lambda x: kfac_hessian_matvec_block(x, squared_kernel[i][i],kernels_grads, kron_list[i]))
                 alpha_part, _ = scipy.sparse.linalg.cg(H_op_part, v_svgd_part, maxiter=cg_maxiter)
                 alpha_part = torch.tensor(alpha_part, dtype=torch.float32).to(device)
                 alpha_list.append(alpha_part)

@@ -3,6 +3,8 @@ import numpy as np
 from tqdm import tqdm  
 
 import torch.nn.functional as F
+from torch.nn import MSELoss
+
 
 # Evaluation loop
 def regression_evaluate_modellist(modellist, dataloader, device, config):
@@ -11,6 +13,9 @@ def regression_evaluate_modellist(modellist, dataloader, device, config):
     for model in modellist:
         model.eval()
     
+    mse_loss = MSELoss()  # Initialize the MSE loss function
+
+
     total_mse = 0.0
     total_nll = 0.0  # Initialize total NLL
     total_samples = 0
@@ -50,40 +55,24 @@ def regression_evaluate_modellist(modellist, dataloader, device, config):
              # Variance as a proxy for uncertainty
             ensemble_variance = pred_reshaped.var(dim=0) + 1e-6  # Adding a small constant for numerical stability #[batch_size, dim_problem]
 
-            #print('var', ensemble_variance.shape)
-
-            loss_fn = torch.nn.MSELoss(reduction="none") 
-            #mse = F.mse_loss(ensemble_pred, targets)
-            mse = loss_fn(ensemble_pred, targets)
-            #constant_term = 0.5 * torch.log(2 * torch.pi * ensemble_variance)
-            #normalized_sq_error = ((ensemble_pred - targets) ** 2) / (2 * ensemble_variance)
-            #nll = torch.mean(constant_term + normalized_sq_error)  # mean over batch
             
-            #print("pred: ", ensemble_pred)
-            #print("targets: ", targets)
-            #print("mse", mse)
 
-            #mse_loss = (ensemble_pred - targets) ** 2 #/ batch_size
-            loss = mse
-
-            #print('mse_loss', mse)
-            #print(constant_term)
-            #print(normalized_sq_error)
-            #print('nll: ', nll)
             
+            loss = mse_loss(ensemble_pred, targets) #'mean' reduction is default
             # NLL assuming Gaussian distribution
-            nll_loss = 0.5 * torch.log(2 * np.pi * ensemble_variance) + (loss / (2 * ensemble_variance)) #/ batch_size
-            total_nll += nll_loss.sum().item()
-
-            total_mse = mse.sum() 
+            nll_loss = torch.nn.functional.gaussian_nll_loss(ensemble_pred, targets, ensemble_variance) #'mean' reduction is default
+            
+            
+            total_nll += nll_loss.sum().item() * inputs.size(0) 
+            total_mse = loss.item() * inputs.size(0) 
             total_samples += inputs.size(0)
 
             n_batches+= 1
 
     
-    eval_MSE = total_mse / n_batches
+    eval_MSE = total_mse / total_samples
     #eval_MSE = total_mse / n_batches
-    eval_RMSE = torch.sqrt(eval_MSE.clone().detach())
+    eval_RMSE = torch.sqrt(torch.tensor(eval_MSE)).item()
     #eval_RMSE = np.sqrt(eval_MSE)
     eval_NLL = total_nll / total_samples  # Average NLL per data point
     #eval_NLL = total_nll / n_batches  # Average NLL per data point
