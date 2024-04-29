@@ -6,7 +6,8 @@ import numpy as np
 
 from laplace import FullLaplace, KronLaplace, DiagLaplace, LowRankLaplace
 
-from stein_classes.stein_utils import calc_loss, hessian_matvec, kfac_hessian_matvec_block, diag_hessian_matvec_block
+from stein_classes.loss import calc_loss
+from stein_classes.stein_utils import hessian_matvec, kfac_hessian_matvec_block, diag_hessian_matvec_block
 
 
 def apply_SVN(modellist, parameters, 
@@ -19,9 +20,9 @@ def apply_SVN(modellist, parameters,
     n_parameters = sum(p.numel() for p in modellist[0].parameters() if p.requires_grad)
     
 
-    loss, log_prob = calc_loss(modellist, batch, train_dataloader, cfg, device)
+    loss = calc_loss(modellist, batch, train_dataloader, cfg, device)
 
-    score_func = autograd.grad(log_prob.sum(), parameters)
+    score_func = autograd.grad(loss.sum(), parameters)
     score_tensors = [t.view(-1) for t in score_func]  # Flatten
     score_func_tensor = torch.cat(score_tensors).view(n_particles, -1)  # (n_particles, n_parameters)
 
@@ -154,7 +155,7 @@ def apply_SVN(modellist, parameters,
                 v_svgd_part = v_svgd[i].squeeze().detach().cpu().flatten().numpy()
                 squared_kernel = K_XX**2
                 kernels_grads = torch.matmul(grad_K[i].T, grad_K[i])
-                H_op_part = scipy.sparse.linalg.LinearOperator((D, D), matvec=lambda x: diag_hessian_matvec_block(x, squared_kernel[i][i],kernels_grads,hessians_tensor[i]))
+                H_op_part = scipy.sparse.linalg.LinearOperator((D, D), matvec=lambda x: diag_hessian_matvec_block(x, squared_kernel[i][i],kernels_grads,hessians_tensor[i], device))
                 alpha_part, _ = scipy.sparse.linalg.cg(H_op_part, v_svgd_part, maxiter=cg_maxiter)
                 alpha_part = torch.tensor(alpha_part, dtype=torch.float32).to(device)
                 alpha_list.append(alpha_part)
@@ -174,7 +175,7 @@ def apply_SVN(modellist, parameters,
                 v_svgd_part = v_svgd[i].squeeze().detach().cpu().flatten().numpy()
                 squared_kernel = K_XX**2
                 kernels_grads = torch.matmul(grad_K[i].T, grad_K[i])
-                H_op_part = scipy.sparse.linalg.LinearOperator((D, D), matvec=lambda x: kfac_hessian_matvec_block(x, squared_kernel[i][i],kernels_grads, kron_list[i]))
+                H_op_part = scipy.sparse.linalg.LinearOperator((D, D), matvec=lambda x: kfac_hessian_matvec_block(x, squared_kernel[i][i],kernels_grads, kron_list[i], device))
                 alpha_part, _ = scipy.sparse.linalg.cg(H_op_part, v_svgd_part, maxiter=cg_maxiter)
                 alpha_part = torch.tensor(alpha_part, dtype=torch.float32).to(device)
                 alpha_list.append(alpha_part)
@@ -182,7 +183,7 @@ def apply_SVN(modellist, parameters,
             alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
             v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
         else: 
-            H_op = scipy.sparse.linalg.LinearOperator((N*D, N*D), matvec=lambda x: hessian_matvec(x, K_XX,grad_K, kron_list, H2, n_parameters))
+            H_op = scipy.sparse.linalg.LinearOperator((N*D, N*D), matvec=lambda x: hessian_matvec(x, K_XX, kron_list, H2, n_parameters))
 
 
     solve_method = 'CG'

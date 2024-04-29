@@ -120,7 +120,6 @@ def run_experiment(cfg):
         # Initialize your models for this fold
         
         
-        print("x_Train shape: ", x_train.shape)
         input_dim = x_train.shape[1]  # Number of features in x_train
         #input_dim = 1 # Number of features in x_train
         output_dim = cfg.task.dim_problem  # Assuming y_train is a vector; if it's a 2D array with one column, this is correct
@@ -136,11 +135,9 @@ def run_experiment(cfg):
 
         if cfg.task.task_type == 'regression':
             test_MSE, test_rmse, test_nll = regression_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
-            metric1, metric2, metric3 =  test_MSE, test_rmse, test_nll
             print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
         elif cfg.task.task_type == 'classification':
             test_accuracy, test_cross_entropy, test_entropy, test_nll = classification_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
-            metric1, metric2, metric3 = test_cross_entropy, test_entropy, test_nll
             print(f"Test Acc: {test_accuracy:.4f}, Test CrossEntropy: {test_cross_entropy:.4f}, Test  Entropy: {test_entropy:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
          
         

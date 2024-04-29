@@ -100,22 +100,28 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
             dim_problem = config.task.dim_problem
             batch_size = inputs.shape[0]
             
-            pred_list = []
+            logits_list = []
+            probabilities_list = []
+
             for model in modellist:
                 
-                logits = model.forward(inputs) 
+                particle_logits = model.forward(inputs) 
+                logits_list.append(particle_logits)
                 if config.task.dim_problem == 1:
-                    probabilities = F.Sigmoid(logits)  # Binary classification
+                    particle_probabilities = F.Sigmoid(particle_logits)  # Binary classification
                 else:
-                    probabilities = F.softmax(logits, dim=-1)# Multi-class classification
-                pred_list.append(probabilities)
+                    particle_probabilities = F.softmax(particle_logits, dim=-1)# Multi-class classification
+                probabilities_list.append(particle_probabilities)
 
-            pred = torch.cat(pred_list, dim=0)
-            pred_reshaped = pred.view(n_particles, batch_size, dim_problem) # Stack to get [n_particles, batch_size, dim_problem]
+            logits = torch.cat(logits_list, dim=0)
+            probabilities = torch.cat(probabilities_list, dim=0)
+            logits_reshaped = logits.view(n_particles, batch_size, dim_problem) # Stack to get [n_particles, batch_size, dim_problem]
+            probabilities_reshaped = probabilities.view(n_particles, batch_size, dim_problem) # Stack to get [n_particles, batch_size, dim_problem]
 
 
             # Mean prediction
-            ensemble_pred = torch.mean(pred_reshaped, dim=0) 
+            logits_pred = torch.mean(logits_reshaped, dim=0) 
+            ensemble_pred = torch.mean(probabilities_reshaped, dim=0) 
 
 
             if targets.dim() == 3 and targets.size(1) == 1 and targets.size(2) == 1:
@@ -129,7 +135,7 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
             assert targets.shape[1] == 1 and targets.shape[0] == batch_size
 
             # Variance as a proxy for uncertainty
-            ensemble_variance = pred_reshaped.var(dim=0) + 1e-6  # Adding a small constant for numerical stability
+            #ensemble_variance = logits_reshaped.var(dim=0) + 1e-6  # Adding a small constant for numerical stability
 
             targets = targets.squeeze(1).long()  # Squeeze and convert to Long if necessary
         
@@ -143,14 +149,15 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
             entropy = -(ensemble_pred * torch.log(ensemble_pred + 1e-6)).sum(dim=1).mean()
             
 
-            log_pred_reshaped = torch.log(pred_reshaped + 1e-15)
-            nll = torch.stack([torch.nn.functional.nll_loss(p, targets) for p in log_pred_reshaped])
+            log_pred_reshaped = torch.log(ensemble_pred + 1e-15)
+            #nll = torch.stack([torch.nn.functional.nll_loss(p, targets) for p in log_pred_reshaped])
+            nll = torch.nn.functional.nll_loss(log_pred_reshaped, targets)
             
 
             
             total_correct += (predicted_labels == targets).sum().item()
-            total_nll += nll.sum().item()
-            total_loss += loss.sum() 
+            total_nll += nll.sum().item() * inputs.size(0)
+            total_loss += loss.sum() * inputs.size(0)
             total_entropy += entropy.item()
             total_samples += inputs.size(0)
 

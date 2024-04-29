@@ -1,7 +1,7 @@
 import torch
 import torch.autograd as autograd
 
-from stein_classes.stein_utils import calc_loss
+from stein_classes.loss import calc_loss
 
 def apply_SVGD(modellist, parameters, 
               batch, train_dataloader, kernel, device, cfg):
@@ -10,10 +10,10 @@ def apply_SVGD(modellist, parameters,
     n_parameters = sum(p.numel() for p in modellist[0].parameters() if p.requires_grad)
     
 
-    loss, log_prob = calc_loss(modellist, batch, train_dataloader, cfg, device)
+    loss = calc_loss(modellist, batch, train_dataloader, cfg, device)
         
 
-    score_func = autograd.grad(log_prob.sum(), parameters)
+    score_func = autograd.grad(loss.sum(), parameters)
     score_tensors = [t.view(-1) for t in score_func]  # Flatten
     score_func_tensor = torch.cat(score_tensors).view(n_particles, -1)  # (n_particles, n_parameters)
 

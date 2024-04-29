@@ -1,12 +1,12 @@
 import torch
 import torch.autograd as autograd
 
-from stein_classes.stein_utils import calc_loss
+from stein_classes.loss import calc_loss
 
 def apply_Ensemble(modellist, parameters, 
               batch, train_dataloader, kernel, device, cfg, optimizer):
         
-    loss, log_prob = calc_loss(modellist, batch, train_dataloader, cfg, device) #[n_particles, bsz]
+    loss = calc_loss(modellist, batch, train_dataloader, cfg, device) #[n_particles, bsz]
 
     #print('loss', loss)
 
