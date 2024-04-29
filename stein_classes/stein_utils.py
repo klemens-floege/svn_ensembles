@@ -2,84 +2,9 @@ import scipy
 import numpy as np
 
 import torch
-import torch.nn.functional as F
  
-#train_Dataloader is uselesss
-def calc_loss(modellist, batch,
-              train_dataloader, cfg, device):
-
-    inputs = batch[0].to(device)
-    targets = batch[1].to(device)
-
-    n_particles = len(modellist)
-    n_parameters = sum(p.numel() for p in modellist[0].parameters() if p.requires_grad)
-
-    dim_problem = cfg.task.dim_problem
-    batch_size = inputs.shape[0]
-    
-    pred_list = []
-
-    for model in modellist:
-        logits = model.forward(inputs)
-        if cfg.task.task_type == 'regression':
-            pred_list.append(logits)
-        elif cfg.task.task_type == 'classification':
-            if cfg.task.dim_problem == 1:
-                probabilities = F.sigmoid(logits)  # Binary classification
-            else:
-                probabilities = F.softmax(logits, dim=-1)  # Multi-class classification
-            pred_list.append(probabilities)
-
-    pred = torch.cat(pred_list, dim=0)
-    pred_reshaped = pred.view(n_particles, batch_size, dim_problem) # Stack to get [n_particles, batch_size, dim_problem]
-
-    #TODO: fix the dimensions on this
-    if targets.dim() == 3 and targets.size(1) == 1 and targets.size(2) == 1:
-        targets = targets.squeeze(1)
-    elif targets.dim() == 2 and targets.size(1) == 1:
-        pass  # No need to squeeze
-    else:
-        raise ValueError("Unexpected shape of 'targets'. It should be either [batch_size, 1, 1] or [batch_size, 1].")
-
-    # Ensure resulting shape is [batch_size, 1]
-    assert targets.shape[1] == 1 and targets.shape[0] == batch_size
-    
-    targets_expanded = targets.expand(n_particles, targets.shape[0], dim_problem)
-    
-
-    if cfg.task.task_type == 'regression':
-        
-        loss = 0.5 * torch.mean((targets_expanded - pred_reshaped) ** 2, dim=1)
-
-    elif cfg.task.task_type == 'classification':
-
-        
-        #loss = torch.stack([F.nll_loss(p, targets.argmax(1)) for p in pred_reshaped])
-
-        loss = torch.stack([F.cross_entropy(pred_reshaped[i], targets.squeeze(1).long()) for i in range(pred_reshaped.size(0))])
-        #loss = torch.stack([F.nll_loss(F.softmax(p, dim=1), targets.squeeze(1).long()) for p in pred_reshaped])
-        
 
 
-    pred_dist_std = cfg.SVN.red_dist_std
-    ll = -loss*len(train_dataloader) / pred_dist_std ** 2
-    log_prob = ll
-    
-
-    return loss, log_prob
-
-
-from joblib import Parallel, delayed
-
-def parallel_kfac(kron_list, current_parameter_vector, n_particles):
-    # Function to compute KFAC for each particle
-    def compute(index):
-        return compute_KFACx(kron_list[index], current_parameter_vector)
-
-    # Execute computations in parallel
-    list_of_KFAC_hess = Parallel(n_jobs=-1)(delayed(compute)(i) for i in range(n_particles))
-
-    return list_of_KFAC_hess
 
 
 def apply_kron_eigen_decomp(eigenvalues_layer, eigenvectors_layer, x_partition):
@@ -198,11 +123,15 @@ def compute_KFACx(kron_decomposed, x):
 
 
 
-def hessian_matvec(input, K_XX, grad_K, kron_list, H2, n_parameters):
+def hessian_matvec(input, K_XX, kron_list, H2, n_parameters, device):
 
         n_particles = len(kron_list)
-        result = torch.zeros_like(torch.tensor(input))
-        input = torch.tensor(input).float()
+        result = torch.zeros_like(torch.tensor(input)).to(device)
+
+        input = torch.tensor(input).float().to(device)
+        grad_K = torch.tensor(grad_K).float().to(device)
+        K_XX = torch.tensor(K_XX).float().to(device)
+        H2 = torch.tensor(H2).float().to(device)
 
         # Now, use transformed_eigenvalues for further operations or aggregation
         # This involves broadcasting K_XX across the dimensions where it is needed
@@ -233,13 +162,16 @@ def hessian_matvec(input, K_XX, grad_K, kron_list, H2, n_parameters):
 
         return result.detach().numpy()
 
-
+ 
 
 #Blockwise Hessian Matrix Block for KFAC computation
-def kfac_hessian_matvec_block(input, squared_kernel, kernels_grads, kron):
+def kfac_hessian_matvec_block(input, squared_kernel, kernels_grads, kron, device):
 
 
-        input = torch.tensor(input).float()
+        input = torch.tensor(input).float().to(device)
+        squared_kernel = torch.tensor(squared_kernel).float().to(device)
+        kernels_grads = torch.tensor(kernels_grads).float().to(device)
+        
 
         kernel_grads_vector = torch.matmul(kernels_grads, input)
         kernel_weght_param_vector = squared_kernel * input
@@ -248,13 +180,16 @@ def kfac_hessian_matvec_block(input, squared_kernel, kernels_grads, kron):
         update = hess_vector + kernel_grads_vector
 
 
-        return update.detach().numpy()
+        return update.detach().cpu().numpy()
 
 #Blockwise Hessian Matrix Block for KFAC computation
-def diag_hessian_matvec_block(input, squared_kernel, kernels_grads, diag_hessian):
+def diag_hessian_matvec_block(input, squared_kernel, kernels_grads, diag_hessian, device):
 
-
-        input = torch.tensor(input).float()
+        
+        input = torch.tensor(input).float().to(device)
+        squared_kernel = torch.tensor(squared_kernel).float().to(device)
+        kernels_grads = torch.tensor(kernels_grads).float().to(device)
+        diag_hessian = torch.tensor(diag_hessian).float().to(device)
 
         kernel_grads_vector = torch.matmul(kernels_grads, input)
         kernel_weght_param_vector = squared_kernel * input
@@ -263,4 +198,4 @@ def diag_hessian_matvec_block(input, squared_kernel, kernels_grads, diag_hessian
         update = hess_vector + kernel_grads_vector
 
 
-        return update.detach().numpy()
+        return update.detach().cpu().numpy()
