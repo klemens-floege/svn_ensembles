@@ -211,3 +211,31 @@ def load_parkinson_data(test_size_split, seed, config):
 
     
     return x_train, y_train, x_test, y_test
+
+def load_mnist_data(test_size_split, seed, config):
+    file_path =  config.task.file_path 
+    # Load data from Excel file
+    data = pd.read_excel(file_path)
+    
+    # Assuming the last column in the DataFrame is 'label'
+    X = data.iloc[:, :-1].values  # Features (pixel values)
+    y = data.iloc[:, -1].values   # Labels
+
+    # Normalize pixel values to be between 0 and 1
+    X = X / 255.0
+
+    # Reshape the images from 784 pixels to 28x28 (if necessary, depending on model input requirement)
+    # Adding a channel dimension for grayscale
+    X_reshaped = X.reshape(-1, 1, 28, 28)  # N, C, H, W format for PyTorch Conv2D
+
+    # Convert labels and features into torch tensors
+    X_tensor = torch.tensor(X_reshaped, dtype=torch.float32)
+    y_tensor = torch.tensor(y, dtype=torch.long)
+
+    # One-hot encode the labels
+    y_one_hot = torch.nn.functional.one_hot(y_tensor, num_classes=config.task.dim_problem)
+
+    # Split the data into training and testing sets
+    x_train, x_test, y_train, y_test = train_test_split(X_tensor, y_one_hot, test_size=test_size_split, random_state=seed)
+    
+    return x_train, y_train, x_test, y_test

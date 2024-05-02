@@ -14,7 +14,8 @@ from models.mlp import initliase_mlp_models
 from utils.kernel import RBF
 from utils.data import get_sine_data, get_gap_data, load_yacht_data, \
     load_energy_data, load_autompg_data, load_concrete_data, load_kin8nm_data, \
-        load_protein_data, load_naval_data, load_power_data, load_parkinson_data
+        load_protein_data, load_naval_data, load_power_data, load_parkinson_data, \
+        load_mnist_data
 from utils.plot import plot_modellist
 from utils.eval import regression_evaluate_modellist, classification_evaluate_modellist
 from train.train import train
@@ -67,6 +68,8 @@ def run_experiment(cfg):
         x_train, y_train, x_test, y_test = load_power_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     elif cfg.task.dataset =="parkinsons":
         x_train, y_train, x_test, y_test = load_parkinson_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
+    elif cfg.task.dataset =="mnist":
+        x_train, y_train, x_test, y_test = load_mnist_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     else: 
         print('The configured dataset is not yet implemented')
         ValueError("The configured dataset is not yet implemented")
@@ -91,48 +94,40 @@ def run_experiment(cfg):
         # Split data into training and validation for this fold
         x_train_fold, x_test_fold = x_combined[train_idx], x_combined[test_idx]
         y_train_fold, y_test_fold = y_combined[train_idx], y_combined[test_idx]
- 
+
+        #TODO: double check if the validation data needs to be normalised here
+        #Normalise Training and Test Data
         scaler = StandardScaler()
         x_train_fold = scaler.fit_transform(x_train_fold)
         x_test_fold = scaler.transform(x_test_fold)
 
          # Split the training data into training and evaluation sets
-        #x_train_split, x_eval_split, y_train_split, y_eval_split = train_test_split(x_train, y_train, test_size=cfg.experiment.train_test_split, random_state=cfg.experiment.seed)
         x_train_split, x_eval_split, y_train_split, y_eval_split = train_test_split(x_train_fold, y_train_fold, test_size=cfg.experiment.train_val_split, random_state=cfg.experiment.seed)
 
-        
         # Create instances of the SineDataset for each set
         train_dataset = Dataset(x_train_split, y_train_split)
         eval_dataset = Dataset(x_eval_split, y_eval_split)
-        #test_dataset = Dataset(x_test, y_test)
         test_dataset = Dataset(x_test_fold, y_test_fold)
 
         print("length train", len(train_dataset))
         print("length eval", len(eval_dataset))
         print("length test", len(test_dataset))
         
-        
-
+        #create dataloaders
         train_dataloader = DataLoader(train_dataset, batch_size=cfg.experiment.batch_size, shuffle=cfg.experiment.shuffle)
         eval_dataloader = DataLoader(eval_dataset, batch_size=cfg.experiment.batch_size, shuffle=cfg.experiment.shuffle)
         test_dataloader = DataLoader(test_dataset, batch_size=cfg.experiment.batch_size, shuffle=cfg.experiment.shuffle)
         
-        # Initialize your models for this fold
-        
-        
+        #initialise models
         input_dim = x_train.shape[1]  # Number of features in x_train
-        #input_dim = 1 # Number of features in x_train
         output_dim = cfg.task.dim_problem  # Assuming y_train is a vector; if it's a 2D array with one column, this is correct
-        #print(y_train.shape)
         modellist = initliase_mlp_models(input_dim, output_dim, cfg)
         
-        
+
         # Train and evaluate as before
         avg_train_time_per_epoch = train(modellist, cfg.experiment.lr, cfg.experiment.num_epochs, train_dataloader, eval_dataloader, device, cfg)
         
-        #test_MSE, test_rmse, test_nll = evaluate_modellist(modellist, dataloader=test_dataloader, device=device)
-        #metric1, metric2, metric3 = None, None, None
-
+        
         if cfg.task.task_type == 'regression':
             test_MSE, test_rmse, test_nll = regression_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
             print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
@@ -140,9 +135,6 @@ def run_experiment(cfg):
             test_accuracy, test_cross_entropy, test_entropy, test_nll = classification_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
             print(f"Test Acc: {test_accuracy:.4f}, Test CrossEntropy: {test_cross_entropy:.4f}, Test  Entropy: {test_entropy:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
          
-        
-    
-        
         
 
         # Ensure avg_train_time_per_epoch is a tensor and move to CPU
@@ -184,7 +176,6 @@ def run_experiment(cfg):
             print("Save path:", full_save_path)
         
             plot_modellist(modellist, x_train_split, y_train_split, x_test, y_test, full_save_path)
-
 
     
     # After all folds are complete, aggregate your metrics across folds to evaluate overall performance

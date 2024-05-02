@@ -6,7 +6,7 @@ from stein_classes.loss import calc_loss
 def apply_Ensemble(modellist, parameters, 
               batch, train_dataloader, kernel, device, cfg, optimizer):
         
-    loss = calc_loss(modellist, batch, train_dataloader, cfg, device) #[n_particles, bsz]
+    loss, log_prob = calc_loss(modellist, batch, train_dataloader, cfg, device) #[n_particles, bsz]
 
     #print('loss', loss)
 

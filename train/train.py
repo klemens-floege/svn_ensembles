@@ -60,6 +60,11 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
     print(f'Epoch {epoch}')
     for step, batch in enumerate(tqdm(train_dataloader)):
 
+      #TODO: double check this
+      for model in modellist:
+      #  model.to(device)
+        model.train()
+
 
       optimizer.zero_grad()    
 

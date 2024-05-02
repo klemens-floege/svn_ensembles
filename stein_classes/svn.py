@@ -20,12 +20,39 @@ def apply_SVN(modellist, parameters,
     n_parameters = sum(p.numel() for p in modellist[0].parameters() if p.requires_grad)
     
 
-    loss = calc_loss(modellist, batch, train_dataloader, cfg, device)
+    loss, log_prob = calc_loss(modellist, batch, train_dataloader, cfg, device)
 
-    score_func = autograd.grad(loss.sum(), parameters)
+    #print("loss: ", loss.shape)
+    #print("loss sum", loss.sum())
+
+    score_func = autograd.grad(log_prob.sum(), parameters)
     score_tensors = [t.view(-1) for t in score_func]  # Flatten
     score_func_tensor = torch.cat(score_tensors).view(n_particles, -1)  # (n_particles, n_parameters)
 
+    #print("score func", score_func_tensor)
+
+    # Calculate the norm of the score function tensor
+    norm = score_func_tensor.norm(p=2, dim=1, keepdim=True)  # Compute the norm for each particle
+    
+    max_norm = 1  # The maximum allowed norm
+
+    # Check if the norm exceeds the maximum allowed norm and normalize if it does
+    norm_clipping_mask = (norm > max_norm)
+    norm_clipping_mask = norm_clipping_mask.squeeze()
+    #expanded_mask = norm_clipping_mask.expand(-1, n_parameters)  # Expand the mask to cover all parameters
+
+    
+    #print('exp mask', expanded_mask)
+    #print(score_func_tensor.shape)
+
+    #print(score_func_tensor[expanded_mask].shape)
+
+    for i in range(norm_clipping_mask.shape[0]):
+        if bool(norm_clipping_mask[i]):
+            score_func_tensor[i] = (score_func_tensor[i] 
+                                            / norm[i]) * max_norm
+    
+    #print("clipped score func: ", score_func_tensor)
 
     inputs_squeezed = inputs.squeeze(1)  # Specify dimension to squeeze
     #TODO; squee targt maybe 
@@ -65,7 +92,7 @@ def apply_SVN(modellist, parameters,
         elif cfg.SVN.hessian_calc == "LowRank":  
             laplace_particle_model = LowRankLaplace(modellist[i], likelihood='regression')
             laplace_particle_model.fit(hessian_particle_loader)
-            Hessian = laplace_particle_model.posterior_precision[0]
+            Hessian = laplace_particle_model.posterior_precision
             #print(type(Hessian)) #<class 'tuple'> 
             #print(Hessian)
 
@@ -114,7 +141,10 @@ def apply_SVN(modellist, parameters,
     
     if M is not None:
         if cfg.SVN.hessian_calc == "Full":  
-            U = torch.linalg.cholesky(M)
+            epsilon = 1e-6  # A small value; adjust as necessary
+            M_reg = M + epsilon * torch.eye(M.size(0), device=M.device)
+            U = torch.linalg.cholesky(M_reg)
+            #U = torch.linalg.cholesky(M)
             ensemble_parameters_tensor = torch.matmul(U, ensemble_parameters_tensor.T).T
             displacement_tensor = torch.matmul(displacement_tensor, M)
         elif cfg.SVN.hessian_calc == "Diag":  

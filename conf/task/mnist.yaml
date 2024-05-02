@@ -1,0 +1,8 @@
+
+
+
+dataset: "mnist"
+
+dim_problem: 10 # num classes
+file_path: "data/mnist/mnist_data.xlsx"  
+task_type: 'classification'
