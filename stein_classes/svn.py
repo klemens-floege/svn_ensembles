@@ -29,30 +29,17 @@ def apply_SVN(modellist, parameters,
     score_tensors = [t.view(-1) for t in score_func]  # Flatten
     score_func_tensor = torch.cat(score_tensors).view(n_particles, -1)  # (n_particles, n_parameters)
 
-    #print("score func", score_func_tensor)
+    #Gradient Clipping
+    if cfg.experiment.grad_clip: 
+        norm = score_func_tensor.norm(p=2, dim=1, keepdim=True)  # Compute the norm for each particle
+        max_norm = cfg.experiment.grad_clip_max_norm
+        norm_clipping_mask = (norm > max_norm)
+        norm_clipping_mask = norm_clipping_mask.squeeze()
 
-    # Calculate the norm of the score function tensor
-    norm = score_func_tensor.norm(p=2, dim=1, keepdim=True)  # Compute the norm for each particle
-    
-    max_norm = 1  # The maximum allowed norm
-
-    # Check if the norm exceeds the maximum allowed norm and normalize if it does
-    norm_clipping_mask = (norm > max_norm)
-    norm_clipping_mask = norm_clipping_mask.squeeze()
-    #expanded_mask = norm_clipping_mask.expand(-1, n_parameters)  # Expand the mask to cover all parameters
-
-    
-    #print('exp mask', expanded_mask)
-    #print(score_func_tensor.shape)
-
-    #print(score_func_tensor[expanded_mask].shape)
-
-    for i in range(norm_clipping_mask.shape[0]):
-        if bool(norm_clipping_mask[i]):
-            score_func_tensor[i] = (score_func_tensor[i] 
-                                            / norm[i]) * max_norm
-    
-    #print("clipped score func: ", score_func_tensor)
+        for i in range(norm_clipping_mask.shape[0]):
+            if bool(norm_clipping_mask[i]):
+                score_func_tensor[i] = (score_func_tensor[i] 
+                                                / norm[i]) * max_norm
 
     inputs_squeezed = inputs.squeeze(1)  # Specify dimension to squeeze
     #TODO; squee targt maybe 
