@@ -42,23 +42,48 @@ def calc_loss(modellist, batch,
     # Ensure resulting shape is [batch_size, 1]
     assert targets.shape[1] == 1 and targets.shape[0] == batch_size
     
-    targets_expanded = targets.expand(n_particles, targets.shape[0], dim_problem)
+
+    targets_expanded = targets.expand(n_particles, batch_size, dim_problem)
+
+    #print('norm', targets)
+    #print('expanded', targets_expanded)
+    #print('pred exp', pred_reshaped)
+    #print(targets_expanded - pred_reshaped)
+
     
 
     if cfg.task.task_type == 'regression':
+
+        #print("targets expan: ", targets_expanded.shape)
+        #print("pred expan: ", pred_reshaped.shape)
         
-        loss = 0.5 * torch.mean((targets_expanded - pred_reshaped) ** 2, dim=1)
+        a = True
+        if a:
+            loss = 0.5 * torch.mean((targets_expanded - pred_reshaped) ** 2, dim=1)
+        else: 
+            ensemble_pred = torch.mean(pred_reshaped, dim=0)
+            loss = 0.5 * torch.mean((targets - ensemble_pred) ** 2, dim=1)
+
 
     elif cfg.task.task_type == 'classification':
-
+        
         #loss = torch.stack([F.nll_loss(p, targets.argmax(1)) for p in pred_reshaped])
         #loss = torch.stack([F.nll_loss(F.log_softmax(p), T.argmax(1)) for p in pred[1]])
+
+
         loss = torch.stack([F.cross_entropy(pred_reshaped[i], targets.squeeze(1).long()) for i in range(pred_reshaped.size(0))])
         
 
-    #pred_dist_std = cfg.SVN.red_dist_std
-    #ll = -loss*len(train_dataloader) / pred_dist_std ** 2
-    #log_prob = ll
+    pred_dist_std = cfg.SVN.red_dist_std
+    ll = -loss* batch_size / pred_dist_std ** 2
+    log_prob = ll 
+        
+    #print('targets', targets)
+    #print('prediciton ', pred_reshaped)
+        
+    #print('loss', loss)
+
+    
     
 
-    return loss#, log_prob
+    return loss, log_prob

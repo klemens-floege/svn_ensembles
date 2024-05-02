@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 import torch.nn.functional as F
 from torch.nn import MSELoss
-
+ 
 
 # Evaluation loop
 def regression_evaluate_modellist(modellist, dataloader, device, config):
@@ -56,11 +56,12 @@ def regression_evaluate_modellist(modellist, dataloader, device, config):
             ensemble_variance = pred_reshaped.var(dim=0) + 1e-6  # Adding a small constant for numerical stability #[batch_size, dim_problem]
 
             
-
-            
             loss = mse_loss(ensemble_pred, targets) #'mean' reduction is default
+
             # NLL assuming Gaussian distribution
             nll_loss = torch.nn.functional.gaussian_nll_loss(ensemble_pred, targets, ensemble_variance) #'mean' reduction is default
+
+            
             
             
             total_nll += nll_loss.sum().item() * inputs.size(0) 
