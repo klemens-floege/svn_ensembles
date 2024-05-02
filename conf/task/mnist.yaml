@@ -4,5 +4,7 @@
 dataset: "mnist"
 
 dim_problem: 10 # num classes
+image_dim: 28
 file_path: "data/mnist/mnist_data.xlsx"  
 task_type: 'classification'
+n_samples: True #if put in an number will limit the number of sample, True: 60000

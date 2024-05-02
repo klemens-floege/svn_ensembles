@@ -5,11 +5,14 @@ defaults:
 
 experiment:
   seed: 10
-  n_splits: 2
+  n_splits: 5
   n_samples: 400
 
-  num_epochs: 1
-  batch_size: 16 
+  grad_clip: False
+  grad_clip_max_norm: 0.1
+
+  num_epochs: 10
+  batch_size: 64 
   lr: 0.01
   kernel_width: 0.01
   early_stop_epochs: 5

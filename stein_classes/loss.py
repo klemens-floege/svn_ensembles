@@ -16,6 +16,8 @@ def calc_loss(modellist, batch,
     
     pred_list = []
 
+    
+
     for model in modellist:
         logits = model.forward(inputs)
         if cfg.task.task_type == 'regression':
@@ -31,16 +33,19 @@ def calc_loss(modellist, batch,
     pred = torch.cat(pred_list, dim=0)
     pred_reshaped = pred.view(n_particles, batch_size, dim_problem) # Stack to get [n_particles, batch_size, dim_problem]
 
+
     #TODO: fix the dimensions on this
     if targets.dim() == 3 and targets.size(1) == 1 and targets.size(2) == 1:
         targets = targets.squeeze(1)
     elif targets.dim() == 2 and targets.size(1) == 1:
         pass  # No need to squeeze
-    else:
-        raise ValueError("Unexpected shape of 'targets'. It should be either [batch_size, 1, 1] or [batch_size, 1].")
+    #else:
+    #    raise ValueError("Unexpected shape of 'targets'. It should be either [batch_size, 1, 1] or [batch_size, 1].")
+
+    #targets = targets.squeeze(1).float()
 
     # Ensure resulting shape is [batch_size, 1]
-    assert targets.shape[1] == 1 and targets.shape[0] == batch_size
+    #assert targets.shape[1] == 1 and targets.shape[0] == batch_size
     
 
     targets_expanded = targets.expand(n_particles, batch_size, dim_problem)

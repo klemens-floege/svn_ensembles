@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 
 from models.mlp import initliase_mlp_models
+from models.lenet import initliase_lenet_models
 
 from utils.kernel import RBF
 from utils.data import get_sine_data, get_gap_data, load_yacht_data, \
@@ -95,11 +96,19 @@ def run_experiment(cfg):
         x_train_fold, x_test_fold = x_combined[train_idx], x_combined[test_idx]
         y_train_fold, y_test_fold = y_combined[train_idx], y_combined[test_idx]
 
-        #TODO: double check if the validation data needs to be normalised here
-        #Normalise Training and Test Data
-        scaler = StandardScaler()
-        x_train_fold = scaler.fit_transform(x_train_fold)
-        x_test_fold = scaler.transform(x_test_fold)
+
+        #initialise models and normalise data
+        output_dim = cfg.task.dim_problem  # Assuming y_train is a vector; if it's a 2D array with one column, this is correct
+
+        if cfg.task.dataset == 'mnist':
+            image_dim = cfg.task.image_dim
+            modellist = initliase_lenet_models(image_dim, output_dim, cfg)
+        else: 
+            scaler = StandardScaler()
+            x_train_fold = scaler.fit_transform(x_train_fold)
+            x_test_fold = scaler.transform(x_test_fold)
+            input_dim = x_train.shape[1]  # Number of features in x_train
+            modellist = initliase_mlp_models(input_dim, output_dim, cfg)
 
          # Split the training data into training and evaluation sets
         x_train_split, x_eval_split, y_train_split, y_eval_split = train_test_split(x_train_fold, y_train_fold, test_size=cfg.experiment.train_val_split, random_state=cfg.experiment.seed)
@@ -118,10 +127,7 @@ def run_experiment(cfg):
         eval_dataloader = DataLoader(eval_dataset, batch_size=cfg.experiment.batch_size, shuffle=cfg.experiment.shuffle)
         test_dataloader = DataLoader(test_dataset, batch_size=cfg.experiment.batch_size, shuffle=cfg.experiment.shuffle)
         
-        #initialise models
-        input_dim = x_train.shape[1]  # Number of features in x_train
-        output_dim = cfg.task.dim_problem  # Assuming y_train is a vector; if it's a 2D array with one column, this is correct
-        modellist = initliase_mlp_models(input_dim, output_dim, cfg)
+        
         
 
         # Train and evaluate as before
