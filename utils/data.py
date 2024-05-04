@@ -215,7 +215,7 @@ def load_parkinson_data(test_size_split, seed, config):
 def load_mnist_data(test_size_split, seed, config):
     file_path =  config.task.file_path 
     # Load data from Excel file
-    if config.task.n_samples:
+    if config.task.n_samples == True:
         data = pd.read_excel(file_path)
     else:
         data = pd.read_excel(file_path, nrows=config.task.n_samples)

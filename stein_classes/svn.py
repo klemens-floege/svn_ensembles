@@ -41,9 +41,12 @@ def apply_SVN(modellist, parameters,
                 score_func_tensor[i] = (score_func_tensor[i] 
                                                 / norm[i]) * max_norm
 
-    inputs_squeezed = inputs.squeeze(1)  # Specify dimension to squeeze
-    #TODO; squee targt maybe 
-
+    
+    #TODO; squee targt maybe
+    if cfg.task.dataset=='mnist': 
+        inputs_squeezed = inputs #do not squeeue [Bsz, 1, 28, 28]
+    else:
+        inputs_squeezed = inputs.squeeze(1)
 
     hessian_particle_loader = data_utils.DataLoader(
         data_utils.TensorDataset(inputs_squeezed, targets), 
