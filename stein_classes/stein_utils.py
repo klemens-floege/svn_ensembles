@@ -165,15 +165,17 @@ def hessian_matvec(input, K_XX, kron_list, H2, n_parameters, device):
  
 
 #Blockwise Hessian Matrix Block for KFAC computation
-def kfac_hessian_matvec_block(input, squared_kernel, kernels_grads, kron, device):
+def kfac_hessian_matvec_block(input, squared_kernel, grad_K_i, kron, device):
 
 
         input = torch.tensor(input).float().to(device)
         squared_kernel = torch.tensor(squared_kernel).float().to(device)
-        kernels_grads = torch.tensor(kernels_grads).float().to(device)
+        #kernels_grads = torch.tensor(kernels_grads).float().to(device)
+        grad_K_i = torch.tensor(grad_K_i).float().to(device)
         
 
-        kernel_grads_vector = torch.matmul(kernels_grads, input)
+        #kernel_grads_vector = torch.matmul(kernels_grads, input)
+        kernel_grads_vector = torch.matmul(torch.matmul(grad_K_i.T, grad_K_i), input)
         kernel_weght_param_vector = squared_kernel * input
         hess_vector = compute_KFACx(kron, kernel_weght_param_vector)
         
@@ -183,15 +185,19 @@ def kfac_hessian_matvec_block(input, squared_kernel, kernels_grads, kron, device
         return update.detach().cpu().numpy()
 
 #Blockwise Hessian Matrix Block for KFAC computation
-def diag_hessian_matvec_block(input, squared_kernel, kernels_grads, diag_hessian, device):
+def diag_hessian_matvec_block(input, squared_kernel, grad_K_i, diag_hessian, device):
 
         
         input = torch.tensor(input).float().to(device)
         squared_kernel = torch.tensor(squared_kernel).float().to(device)
-        kernels_grads = torch.tensor(kernels_grads).float().to(device)
+        #kernels_grads = torch.tensor(kernels_grads).float().to(device)
+        grad_K_i = torch.tensor(grad_K_i).float().to(device)
         diag_hessian = torch.tensor(diag_hessian).float().to(device)
 
-        kernel_grads_vector = torch.matmul(kernels_grads, input)
+        #kernel_grads_vector = torch.sum(grad_K_i.T * grad_K_i, dim=1)  # Element-wise multiplication and sum along rows
+        kernel_grads_vector = torch.matmul(torch.matmul(grad_K_i.T, grad_K_i), input)
+
+        #kernel_grads_vector = torch.matmul(kernels_grads, input)
         kernel_weght_param_vector = squared_kernel * input
         hess_vector = diag_hessian * kernel_weght_param_vector
         

@@ -193,7 +193,8 @@ def run_experiment(cfg):
 
     # Calculate mean and standard deviation for each metric across all folds
     metrics_mean = metrics_array.mean(axis=0)
-    metrics_std = metrics_array.std(axis=0)
+    metrics_std = metrics_array.std(axis=0) / np.sqrt(cfg.experiment.n_splits)
+
 
     if cfg.task.task_type == 'regression':
         print(f"Average Test MSE: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Average Test NLL: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f},  Avg Time / Epoch: {metrics_mean[2]:.2f} ± {metrics_std[2]:.2f}")
