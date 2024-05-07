@@ -250,3 +250,68 @@ def load_mnist_data(test_size_split, seed, config):
     x_train, x_test, y_train, y_test = train_test_split(X_tensor, y_one_hot, test_size=test_size_split, random_state=seed)
     
     return x_train, y_train, x_test, y_test
+
+def load_fashionmnist_data(test_size_split, seed, config):
+    file_path =  config.task.file_path 
+    # Load data from Excel file
+    if config.task.n_samples == True:
+        data = pd.read_excel(file_path)
+    else:
+        data = pd.read_excel(file_path, nrows=config.task.n_samples)
+    
+    # Assuming the last column in the DataFrame is 'label'
+    X = data.iloc[:, :-1].values  # Features (pixel values)
+    y = data.iloc[:, -1].values   # Labels
+
+    # Normalize pixel values to be between 0 and 1
+    X = X / 255.0
+
+    # Reshape the images from 784 pixels to 28x28 (if necessary, depending on model input requirement)
+    X_reshaped = X.reshape(-1, config.task.image_dim, config.task.image_dim)  # N, C, H, W format for PyTorch Conv2D
+
+    # Convert labels and features into torch tensors
+    X_tensor = torch.tensor(X_reshaped, dtype=torch.float32)
+    y_tensor = torch.tensor(y, dtype=torch.long)
+    
+    y_one_hot = y_tensor
+
+    # Split the data into training and testing sets
+    x_train, x_test, y_train, y_test = train_test_split(X_tensor, y_one_hot, test_size=test_size_split, random_state=seed)
+    
+    return x_train, y_train, x_test, y_test
+
+def load_cifar10_data(test_size_split, seed, config):
+    file_path = config.task.file_path
+    
+    # Load data from Excel file based on the number of samples specified in the config
+    if config.task.n_samples == 'all':
+        data = pd.read_excel(file_path)
+    else:
+        data = pd.read_excel(file_path, nrows=config.task.n_samples)
+    
+    # Assuming the last column in the DataFrame is 'label'
+    X = data.iloc[:, :-1].values  # Features (pixel values)
+    y = data.iloc[:, -1].values   # Labels
+
+    # Normalize pixel values to be between 0 and 1
+    X = X / 255.0
+
+    # Reshape the images from 3072 pixels to 32x32x3 for RGB images
+    # CIFAR-10 images need to be reshaped to 3 channels (RGB)
+    if config.task.image_dim == 32:
+        X_reshaped = X.reshape(-1, 3, 32, 32)  # N, C, H, W format for PyTorch Conv2D
+    else:
+        raise ValueError("The CIFAR-10 image dimension is expected to be 32x32.")
+
+    # Convert labels and features into torch tensors
+    X_tensor = torch.tensor(X_reshaped, dtype=torch.float32)
+    y_tensor = torch.tensor(y, dtype=torch.long)
+    
+    # Optionally one-hot encode the labels, if needed
+    if config.task.one_hot:
+        y_tensor = torch.nn.functional.one_hot(y_tensor, num_classes=10)
+    
+    # Split the data into training and testing sets
+    x_train, x_test, y_train, y_test = train_test_split(X_tensor, y_tensor, test_size=test_size_split, random_state=seed)
+    
+    return x_train, y_train, x_test, y_test

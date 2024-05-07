@@ -16,7 +16,7 @@ from utils.kernel import RBF
 from utils.data import get_sine_data, get_gap_data, load_yacht_data, \
     load_energy_data, load_autompg_data, load_concrete_data, load_kin8nm_data, \
         load_protein_data, load_naval_data, load_power_data, load_parkinson_data, \
-        load_mnist_data
+        load_mnist_data, load_fashionmnist_data
 from utils.plot import plot_modellist
 from utils.eval import regression_evaluate_modellist, classification_evaluate_modellist
 from train.train import train
@@ -71,6 +71,8 @@ def run_experiment(cfg):
         x_train, y_train, x_test, y_test = load_parkinson_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     elif cfg.task.dataset =="mnist":
         x_train, y_train, x_test, y_test = load_mnist_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
+    elif cfg.task.dataset =="fashionmnist":
+        x_train, y_train, x_test, y_test = load_fashionmnist_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     else: 
         print('The configured dataset is not yet implemented')
         ValueError("The configured dataset is not yet implemented")
@@ -85,7 +87,7 @@ def run_experiment(cfg):
     if cfg.task.task_type == 'regression':
         n_metrics = 3 # metrics to track across folds
     elif cfg.task.task_type == 'classification':
-        n_metrics = 4 # metrics to track across folds
+        n_metrics = 6 # metrics to track across folds
 
     metrics_array = np.zeros((n_splits, n_metrics)) # Store metrics from each fold
     
@@ -100,7 +102,7 @@ def run_experiment(cfg):
         #initialise models and normalise data
         output_dim = cfg.task.dim_problem  # Assuming y_train is a vector; if it's a 2D array with one column, this is correct
 
-        if cfg.task.dataset == 'mnist':
+        if cfg.task.dataset in ['mnist', 'fashionmnist']:
             image_dim = cfg.task.image_dim
             modellist = initliase_lenet_models(image_dim, output_dim, cfg)
         else: 
@@ -138,8 +140,8 @@ def run_experiment(cfg):
             test_MSE, test_rmse, test_nll = regression_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
             print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
         elif cfg.task.task_type == 'classification':
-            test_accuracy, test_cross_entropy, test_entropy, test_nll = classification_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
-            print(f"Test Acc: {test_accuracy:.4f}, Test CrossEntropy: {test_cross_entropy:.4f}, Test  Entropy: {test_entropy:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
+            test_accuracy, test_cross_entropy, test_entropy, test_nll, test_ece, test_brier = classification_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
+            print(f"Test Acc: {test_accuracy:.4f}, Test CrossEntropy: {test_cross_entropy:.4f}, Test  Entropy: {test_entropy:.4f}, Test  NLL: {test_nll:.4f}, Test  ECE: {test_ece:.4f}, Test  Brier: {test_brier:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
          
         
 
@@ -162,7 +164,11 @@ def run_experiment(cfg):
                 test_cross_entropy = test_cross_entropy.cpu()
             if isinstance(test_nll, torch.Tensor):
                 test_nll = test_nll.cpu()
-            metrics_array[fold] = [test_accuracy,test_cross_entropy,  test_nll, avg_train_time_per_epoch]
+            if isinstance(test_ece, torch.Tensor):
+                test_nll = test_ece.cpu()
+            if isinstance(test_brier, torch.Tensor):
+                test_nll = test_brier.cpu()
+            metrics_array[fold] = [test_accuracy,test_cross_entropy,  test_nll, test_ece, test_brier, avg_train_time_per_epoch]
         
 
         if fold== 0 and cfg.task.dataset in  ["sine", "gap"]: 
@@ -199,5 +205,5 @@ def run_experiment(cfg):
     if cfg.task.task_type == 'regression':
         print(f"Average Test MSE: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Average Test NLL: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f},  Avg Time / Epoch: {metrics_mean[2]:.2f} ± {metrics_std[2]:.2f}")
     elif cfg.task.task_type == 'classification':
-        print(f"Avg Test Accuracy: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Avg Test CrossEntr: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f}, Avg NLL: {metrics_mean[2]:.2f} ± {metrics_std[2]:.2f},  Avg Time / Epoch: {metrics_mean[3]:.2f} ± {metrics_std[3]:.2f}")
+        print(f"Avg Test Accuracy: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Avg Test CrossEntr: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f}, Avg NLL: {metrics_mean[2]:.2f} ± {metrics_std[2]:.2f}, Avg Test ECE: {metrics_mean[3]:.2f} ± {metrics_std[3]:.2f}, Avg Test Brier: {metrics_mean[4]:.2f} ± {metrics_std[4]:.2f},  Avg Time / Epoch: {metrics_mean[5]:.2f} ± {metrics_std[5]:.2f}")
     

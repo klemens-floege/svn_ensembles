@@ -10,6 +10,8 @@ from laplace.curvature import AsdlGGN, AsdlEF
 from stein_classes.loss import calc_loss
 from stein_classes.stein_utils import hessian_matvec, kfac_hessian_matvec_block, diag_hessian_matvec_block
 
+import inspect
+
 
 def apply_SVN(modellist, parameters, 
               batch, train_dataloader, kernel, device, cfg):
@@ -44,7 +46,7 @@ def apply_SVN(modellist, parameters,
 
     
     #TODO; squee targt maybe
-    if cfg.task.dataset=='mnist': 
+    if cfg.task.dataset in ['mnist', 'fashionmnist'] : 
         inputs_squeezed = inputs #do not squeeue [Bsz, 1, 28, 28]
     else:
         inputs_squeezed = inputs.squeeze(1)
@@ -63,7 +65,8 @@ def apply_SVN(modellist, parameters,
         #likelihood_type= cfg.task.task_type
 
         if cfg.SVN.hessian_calc == "Full":  
-            laplace_particle_model = FullLaplace(modellist[i], likelihood='regression')
+            laplace_particle_model = FullLaplace(modellist[i], 
+                                                 likelihood='regression')
             laplace_particle_model.fit(hessian_particle_loader)
             Hessian = laplace_particle_model.posterior_precision
             hessians_list.append(Hessian)
@@ -78,6 +81,7 @@ def apply_SVN(modellist, parameters,
             #backend = AsdlGGN if args.approx_type == 'ggn' else AsdlEF
             #TODO: double check AsdL
             laplace_particle_model = KronLaplace(modellist[i], 
+                                                 subset_of_weights='last_layer',
                                                  likelihood='regression'                                                 
                                                  )
             laplace_particle_model.fit(hessian_particle_loader)

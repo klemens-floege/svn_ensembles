@@ -1,0 +1,8 @@
+
+dataset: "cifar10"
+
+dim_problem: 10 # num classes
+image_dim: 32
+file_path: "data/cifar-10/cifar10_data.xlsx"  
+task_type: 'classification'
+n_samples: True #if put in an number will limit the number of sample, True: 60000

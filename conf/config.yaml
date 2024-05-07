@@ -11,8 +11,8 @@ experiment:
   grad_clip: False
   grad_clip_max_norm: 0.1
 
-  num_epochs: 10
-  batch_size: 64 
+  num_epochs: 50
+  batch_size: 16 
   lr: 0.01
   kernel_width: 0.01
   early_stop_epochs: 5
