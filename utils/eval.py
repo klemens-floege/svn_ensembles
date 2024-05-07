@@ -5,6 +5,8 @@ from tqdm import tqdm
 import torch.nn.functional as F
 from torch.nn import MSELoss
  
+from torchmetrics.classification import MulticlassCalibrationError
+from utils.brier import brier_scores
 
 # Evaluation loop
 def regression_evaluate_modellist(modellist, dataloader, device, config):
@@ -60,8 +62,6 @@ def regression_evaluate_modellist(modellist, dataloader, device, config):
 
             # NLL assuming Gaussian distribution
             nll_loss = torch.nn.functional.gaussian_nll_loss(ensemble_pred, targets, ensemble_variance) #'mean' reduction is default
-
-            
             
             
             total_nll += nll_loss.sum().item() * inputs.size(0) 
@@ -87,11 +87,14 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
     for model in modellist:
         model.eval()
     
+    total_samples = 0
     total_loss = 0.0
     total_correct = 0
     total_nll = 0.0  # Initialize total NLL
     total_entropy = 0.0
-    total_samples = 0
+    total_ece = 0.0
+    total_brier = 0.0
+    
 
     for step, batch in enumerate(tqdm(dataloader)):
         with torch.no_grad():
@@ -121,8 +124,8 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
 
 
             # Mean prediction
-            logits_pred = torch.mean(logits_reshaped, dim=0) 
-            ensemble_pred = torch.mean(probabilities_reshaped, dim=0) 
+            logits_ensemble_pred = torch.mean(logits_reshaped, dim=0) 
+            probs_ensemble_pred = torch.mean(probabilities_reshaped, dim=0) 
 
 
             if targets.dim() == 3 and targets.size(1) == 1 and targets.size(2) == 1:
@@ -140,24 +143,29 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
 
             targets = targets.squeeze(1).long()  # Squeeze and convert to Long if necessary
         
-            loss = torch.nn.functional.cross_entropy(ensemble_pred, targets)
+            loss = torch.nn.functional.cross_entropy(logits_ensemble_pred, targets)
             total_loss += loss.item()
 
           
-            _, predicted_labels = torch.max(ensemble_pred, 1)
+            _, predicted_labels = torch.max(probs_ensemble_pred, 1)
           
             
-            entropy = -(ensemble_pred * torch.log(ensemble_pred + 1e-6)).sum(dim=1).mean()
+            entropy = -(probs_ensemble_pred * torch.log(probs_ensemble_pred + 1e-6)).sum(dim=1).mean()
             
 
-            log_pred_reshaped = torch.log(ensemble_pred + 1e-15)
+            log_pred_reshaped = torch.log(probs_ensemble_pred + 1e-15)
             #nll = torch.stack([torch.nn.functional.nll_loss(p, targets) for p in log_pred_reshaped])
             nll = torch.nn.functional.nll_loss(log_pred_reshaped, targets)
-            
 
+            ECE_loss = MulticlassCalibrationError(num_classes=config.task.dim_problem, n_bins=15, norm='l1')
+            ece = ECE_loss(probs_ensemble_pred, targets)
+            brier = brier_scores(probs_ensemble_pred, targets, config.task.dim_problem)
+            
             
             total_correct += (predicted_labels == targets).sum().item()
             total_nll += nll.sum().item() * inputs.size(0)
+            total_ece += ece.sum().item() * inputs.size(0)
+            total_brier += brier.sum().item()  * inputs.size(0)
             total_loss += loss.sum() * inputs.size(0)
             total_entropy += entropy.item()
             total_samples += inputs.size(0)
@@ -167,5 +175,7 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
     eval_cross_entropy = total_loss / total_samples
     eval_entropy = total_entropy / total_samples
     eval_NLL = total_nll / total_samples  # Average NLL per data point
+    eval_ECE = total_ece / total_samples
+    eval_Brier = total_brier / total_samples
 
-    return eval_accuracy, eval_cross_entropy, eval_entropy, eval_NLL
+    return eval_accuracy, eval_cross_entropy, eval_entropy, eval_NLL, eval_ECE, eval_Brier
