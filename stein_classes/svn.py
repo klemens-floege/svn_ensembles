@@ -81,7 +81,6 @@ def apply_SVN(modellist, parameters,
             #backend = AsdlGGN if args.approx_type == 'ggn' else AsdlEF
             #TODO: double check AsdL
             laplace_particle_model = KronLaplace(modellist[i], 
-                                                 subset_of_weights='last_layer',
                                                  likelihood='regression'                                                 
                                                  )
             laplace_particle_model.fit(hessian_particle_loader)
