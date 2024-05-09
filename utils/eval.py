@@ -5,7 +5,7 @@ from tqdm import tqdm
 import torch.nn.functional as F
 from torch.nn import MSELoss
  
-from torchmetrics.classification import MulticlassCalibrationError
+from torchmetrics.classification import MulticlassCalibrationError, AUROC
 from utils.brier import brier_scores
 
 # Evaluation loop
@@ -94,6 +94,7 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
     total_entropy = 0.0
     total_ece = 0.0
     total_brier = 0.0
+    total_auroc = 0.0
     
 
     for step, batch in enumerate(tqdm(dataloader)):
@@ -163,7 +164,13 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
             ECE_loss = MulticlassCalibrationError(num_classes=config.task.dim_problem, n_bins=15, norm='l1')
             ece = ECE_loss(probs_ensemble_pred, targets)
             brier = brier_scores(probs_ensemble_pred, targets, config.task.dim_problem)
-            
+
+            if config.task.dim_problem == 2:
+                auroc = AUROC(task="binary")
+                auroc(probs_ensemble_pred, targets)
+            else: 
+                auroc = AUROC(task="multiclass", num_classes=config.task.dim_problem)
+                auroc(probs_ensemble_pred, targets)
             
             total_correct += (predicted_labels == targets).sum().item()
             total_nll += nll.sum().item() * inputs.size(0)
@@ -171,6 +178,7 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
             total_brier += brier.sum().item()  * inputs.size(0)
             total_loss += loss.sum() * inputs.size(0)
             total_entropy += entropy.item()
+            total_auroc += auroc.sum().item() * inputs.size(0)
             total_samples += inputs.size(0)
 
 
@@ -180,5 +188,6 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
     eval_NLL = total_nll / total_samples  # Average NLL per data point
     eval_ECE = total_ece / total_samples
     eval_Brier = total_brier / total_samples
+    eval_AUROC = total_auroc / total_samples
 
-    return eval_accuracy, eval_cross_entropy, eval_entropy, eval_NLL, eval_ECE, eval_Brier
+    return eval_accuracy, eval_cross_entropy, eval_entropy, eval_NLL, eval_ECE, eval_Brier, eval_AUROC
