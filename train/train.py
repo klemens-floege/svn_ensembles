@@ -101,43 +101,19 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
       best_metric_tracker = eval_MSE
       print(f"Epoch {epoch}: MSE: {eval_MSE:.4f}, RMSE: {eval_rmse:.4f}, NLL: {eval_NLL:.4f}")
     elif cfg.task.task_type == 'classification':
-      eval_accuracy, eval_cross_entropy, eval_entropy, eval_NLL, eval_ECE, eval_Brier = classification_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
+      eval_accuracy, eval_cross_entropy, eval_entropy, eval_NLL, eval_ECE, eval_Brier, eval_AUROC = classification_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
       best_metric_tracker = eval_cross_entropy
-      print(f"Epoch {epoch}: Acc: {eval_accuracy:.4f}, CrossEntr: {eval_cross_entropy:.4f}, Enrtr: {eval_entropy:.4f}, NLL: {eval_NLL:.4f}, ECE: {eval_ECE:.4f}, Brier: {eval_Brier:.4f}")
+      print(f"Epoch {epoch}: Acc: {eval_accuracy:.4f}, CrossEntr: {eval_cross_entropy:.4f}, Enrtr: {eval_entropy:.4f}, NLL: {eval_NLL:.4f}, ECE: {eval_ECE:.4f}, Brier: {eval_Brier:.4f}, AUROC: {eval_AUROC:.4f}")
 
       # Log evaluation metrics after each epoch
       metrics_to_log = {
             "epoch": epoch, "eval_accuracy": eval_accuracy, "eval_cross_entropy": eval_cross_entropy,
             "eval_entropy": eval_entropy, "eval_NLL": eval_NLL, "eval_ECE": eval_ECE, "eval_Brier": eval_Brier,
-            "time_per_epoch": time.time() - start_time
+            "eval_AUROC": eval_AUROC, "time_per_epoch": time.time() - start_time
       }
       wandb.log(metrics_to_log)
       global_step += 1  # Increment to differentiate from batch logging
       
-      '''# Update the values list with the converted tensor values
-      values = [
-          epoch,
-          eval_accuracy,
-          eval_cross_entropy,
-          eval_entropy,
-          eval_NLL,
-          eval_ECE,
-          eval_Brier,
-          time_diff
-      ]
-
-      table = tabulate.tabulate([values], columns, tablefmt='simple', floatfmt='8.4f')
-      print(table)
-      logged_values.append(values)
-
-      # Log each metric individually for graphing
-      metrics_to_log = {col: val for col, val in zip(columns, values)}
-      counter +=1
-      wandb.log(metrics_to_log, step=step) #here'''
-
-    #counter +=1
-    #wandb.log({"Epoch Summary": wandb.Table(data=logged_values, columns=columns)}, step=counter)#here
-    
 
     # Check for improvement
     if best_metric_tracker < best_mse:
