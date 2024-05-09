@@ -1,7 +1,7 @@
 import torch
 
 
-def initliase_mlp_models(input_dim, output_dim, config):
+def initialise_mlp_models(input_dim, output_dim, config):
     # Dynamically adjust layer sizes
     n_particles = config.experiment.n_particles
     hidden_layers = config.experiment.hidden_layers

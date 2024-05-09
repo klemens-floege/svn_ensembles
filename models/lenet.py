@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 
-def initliase_lenet_models(input_dim, output_dim, config):
+def initialise_lenet_models(input_dim, output_dim, config):
 
     n_particles = config.experiment.n_particles
 

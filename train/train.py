@@ -1,6 +1,8 @@
 import torch
 import copy
 import time
+import wandb
+import tabulate
 
 from tqdm import tqdm
 from torch.optim import AdamW
@@ -20,6 +22,8 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
     model.to(device)
     model.train()
   
+  columns = ["epc", "eval_accuracy", "eval_cross_entropy", "eval_entropy", "eval_NLL", "eval_ECE", "eval_Brier", "time"]
+
   
   n_particles = len(modellist)
   K = RBF(cfg.experiment.kernel_width)
@@ -47,6 +51,9 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
 
   
   avg_time = 0
+  logged_values = []
+  
+  global_step = 0  # Initialize a global step counter
   
 
   print('-------------------------'+'Start training'+'-------------------------')
@@ -81,10 +88,13 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
           ValueError("Approximate Bayesian Inference method not implemented ")
           return
             
+      wandb.log({"loss": loss.mean().item()})  # Log loss at each batch step
+      #global_step += 1  # Increment global step after logging
 
       optimizer.step()
   
     best_metric_tracker = None
+    time_diff = time.time() - start_time
     
     if cfg.task.task_type == 'regression':
       eval_MSE, eval_rmse, eval_NLL = regression_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
@@ -95,6 +105,38 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
       best_metric_tracker = eval_cross_entropy
       print(f"Epoch {epoch}: Acc: {eval_accuracy:.4f}, CrossEntr: {eval_cross_entropy:.4f}, Enrtr: {eval_entropy:.4f}, NLL: {eval_NLL:.4f}, ECE: {eval_ECE:.4f}, Brier: {eval_Brier:.4f}")
 
+      # Log evaluation metrics after each epoch
+      metrics_to_log = {
+            "epoch": epoch, "eval_accuracy": eval_accuracy, "eval_cross_entropy": eval_cross_entropy,
+            "eval_entropy": eval_entropy, "eval_NLL": eval_NLL, "eval_ECE": eval_ECE, "eval_Brier": eval_Brier,
+            "time_per_epoch": time.time() - start_time
+      }
+      wandb.log(metrics_to_log)
+      global_step += 1  # Increment to differentiate from batch logging
+      
+      '''# Update the values list with the converted tensor values
+      values = [
+          epoch,
+          eval_accuracy,
+          eval_cross_entropy,
+          eval_entropy,
+          eval_NLL,
+          eval_ECE,
+          eval_Brier,
+          time_diff
+      ]
+
+      table = tabulate.tabulate([values], columns, tablefmt='simple', floatfmt='8.4f')
+      print(table)
+      logged_values.append(values)
+
+      # Log each metric individually for graphing
+      metrics_to_log = {col: val for col, val in zip(columns, values)}
+      counter +=1
+      wandb.log(metrics_to_log, step=step) #here'''
+
+    #counter +=1
+    #wandb.log({"Epoch Summary": wandb.Table(data=logged_values, columns=columns)}, step=counter)#here
     
 
     # Check for improvement
@@ -122,7 +164,7 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
         break
     
 
-    time_diff = time.time() - start_time
+    
 
     avg_time += time_diff
 

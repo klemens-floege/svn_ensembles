@@ -103,6 +103,9 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
 
             dim_problem = config.task.dim_problem
             batch_size = inputs.shape[0]
+
+            if config.task.dataset in ['cifar10']:
+                inputs = inputs.squeeze(1) #result [Bsz, 3, 32, 32]
             
             logits_list = []
             probabilities_list = []

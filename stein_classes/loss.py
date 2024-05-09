@@ -16,6 +16,9 @@ def calc_loss(modellist, batch,
     
     pred_list = []
 
+    if cfg.task.dataset in ['cifar10']:
+        inputs = inputs.squeeze(1) #result [Bsz, 3, 32, 32]
+
     
 
     for model in modellist:

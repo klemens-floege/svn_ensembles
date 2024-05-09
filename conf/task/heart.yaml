@@ -1,0 +1,7 @@
+
+
+dataset: "heart"
+
+dim_problem: 2 # 1 corresponds to binary classification
+file_path: "data/heart/statlog_heart_data.xlsx"  
+task_type: 'classification'
