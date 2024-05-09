@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import torch
+import pickle 
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
@@ -145,6 +146,7 @@ def load_naval_data(test_size_split, seed, config):
     #TODO: double check this
     X = data.iloc[:, :-2].values  # Features
     y = data.iloc[:, -2].values   # Target variable
+
     
     x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
     
@@ -207,6 +209,131 @@ def load_parkinson_data(test_size_split, seed, config):
     
     
     
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
+
+    
+    return x_train, y_train, x_test, y_test
+
+
+def load_breast_data(test_size_split, seed, config):
+    file_path =  config.task.file_path 
+    data = pd.read_excel(file_path)
+    #data = pd.read_excel(file_path)
+    print(data.head())
+    
+    print("Dataset length:", len(data))
+    print("Number of columns before one-hot encoding:", len(data.columns))
+
+    unique_classes = data['Diagnosis'].unique()
+    n_classes = len(unique_classes)  # Count of unique classes
+    print("Unique status classes:", unique_classes)
+    print("Number of unique classes:", n_classes)
+
+    #assert n_classes == config.task.dim_problem
+
+
+    # One-hot encode the "status" column and update the dataframe
+    encoder = OneHotEncoder(sparse=False, drop='first')  # Avoid multicollinearity by dropping first
+    data_encoded = data.copy()  # Create a copy to keep the original data intact
+    data_encoded['Diagnosis'] = encoder.fit_transform(data[['Diagnosis']]).ravel()  # Flatten array and assign
+
+    # Separating features and target variable
+    X = data_encoded.drop(columns=['Diagnosis']).values  # Features: all columns except 'status'
+    y = data_encoded['Diagnosis'].values  # Target variable: encoded 'status'
+
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
+
+    
+    return x_train, y_train, x_test, y_test
+
+def load_heart_data(test_size_split, seed, config):
+    file_path =  config.task.file_path 
+    data = pd.read_excel(file_path)
+    #data = pd.read_excel(file_path)
+    print(data.head())
+    
+    print("Dataset length:", len(data))
+    print("Number of columns before one-hot encoding:", len(data.columns))
+
+    unique_classes = data['Heart Disease Presence'].unique()
+    n_classes = len(unique_classes)  # Count of unique classes
+    print("Unique status classes:", unique_classes)
+    print("Number of unique classes:", n_classes)
+
+    #assert n_classes == config.task.dim_problem
+
+
+    # One-hot encode the "status" column and update the dataframe
+    encoder = OneHotEncoder(sparse=False, drop='first')  # Avoid multicollinearity by dropping first
+    data_encoded = data.copy()  # Create a copy to keep the original data intact
+    data_encoded['Heart Disease Presence'] = encoder.fit_transform(data[['Heart Disease Presence']]).ravel()  # Flatten array and assign
+
+    # Separating features and target variable
+    X = data_encoded.drop(columns=['Heart Disease Presence']).values  # Features: all columns except 'status'
+    y = data_encoded['Heart Disease Presence'].values  # Target variable: encoded 'status'
+
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
+
+    
+    return x_train, y_train, x_test, y_test
+
+def load_ionosphere_data(test_size_split, seed, config):
+    file_path =  config.task.file_path 
+    data = pd.read_excel(file_path)
+    #data = pd.read_excel(file_path)
+    print(data.head())
+    
+    print("Dataset length:", len(data))
+    print("Number of columns before one-hot encoding:", len(data.columns))
+
+    unique_classes = data['Class'].unique()
+    n_classes = len(unique_classes)  # Count of unique classes
+    print("Unique status classes:", unique_classes)
+    print("Number of unique classes:", n_classes)
+
+    #assert n_classes == config.task.dim_problem
+
+
+    # One-hot encode the "status" column and update the dataframe
+    encoder = OneHotEncoder(sparse=False, drop='first')  # Avoid multicollinearity by dropping first
+    data_encoded = data.copy()  # Create a copy to keep the original data intact
+    data_encoded['Class'] = encoder.fit_transform(data[['Class']]).ravel()  # Flatten array and assign
+
+    # Separating features and target variable
+    X = data_encoded.drop(columns=['Class']).values  # Features: all columns except 'status'
+    y = data_encoded['Class'].values  # Target variable: encoded 'status'
+
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
+
+    
+    return x_train, y_train, x_test, y_test
+
+def load_australian_data(test_size_split, seed, config):
+    file_path =  config.task.file_path 
+    data = pd.read_excel(file_path)
+    #data = pd.read_excel(file_path)
+    print(data.head())
+    
+    print("Dataset length:", len(data))
+    print("Number of columns before one-hot encoding:", len(data.columns))
+
+    unique_classes = data['Class'].unique()
+    n_classes = len(unique_classes)  # Count of unique classes
+    print("Unique status classes:", unique_classes)
+    print("Number of unique classes:", n_classes)
+
+    #assert n_classes == config.task.dim_problem
+
+
+    # One-hot encode the "status" column and update the dataframe
+    encoder = OneHotEncoder(sparse=False, drop='first')  # Avoid multicollinearity by dropping first
+    data_encoded = data.copy()  # Create a copy to keep the original data intact
+    data_encoded['Class'] = encoder.fit_transform(data[['Class']]).ravel()  # Flatten array and assign
+
+    # Separating features and target variable
+    X = data_encoded.drop(columns=['Class']).values  # Features: all columns except 'status'
+    y = data_encoded['Class'].values  # Target variable: encoded 'status'
+
     x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
 
     
@@ -280,7 +407,7 @@ def load_fashionmnist_data(test_size_split, seed, config):
     
     return x_train, y_train, x_test, y_test
 
-def load_cifar10_data(test_size_split, seed, config):
+'''def load_cifar10_data(test_size_split, seed, config):
     file_path = config.task.file_path
     
     # Load data from Excel file based on the number of samples specified in the config
@@ -314,4 +441,50 @@ def load_cifar10_data(test_size_split, seed, config):
     # Split the data into training and testing sets
     x_train, x_test, y_train, y_test = train_test_split(X_tensor, y_tensor, test_size=test_size_split, random_state=seed)
     
+    return x_train, y_train, x_test, y_test'''
+
+
+
+def unpickle(file):
+    with open(file, 'rb') as fo:
+        data_dict = pickle.load(fo, encoding='bytes')
+    return data_dict
+
+def load_cifar10_data(config):
+    data_dir = config.task.file_path
+    #load training data 
+    for i in range(1, 6): 
+        filename = data_dir+"data_batch_"+str(i) 
+        dictionary = unpickle(filename) 
+        x_data = dictionary[b'data']  
+        y_data = np.array(dictionary[b"labels"])
+        if i==1:   
+            x_train = x_data  
+            y_train= y_data  
+        else:  
+            x_train = np.concatenate((x_train, x_data), axis = 0)   
+            y_train = np.concatenate((y_train, y_data), axis = 0)  
+    #load testing data 
+    filename = data_dir+"test_batch" 
+    dictionary = unpickle(filename)
+    data = dictionary[b"data"]
+    x_test = data 
+    y_test = np.array(dictionary[b"labels"]) 
+
+    #normalise data: 
+    x_train, x_test = x_train/ 255, x_test /255 
+    
+    if config.task.image_dim == 32:
+        #x_train = x_train.reshape(-1, 3, 32, 32)  # N, C, H, W format for PyTorch Conv2D
+        #x_test = x_test.reshape(-1, 3, 32, 32)  # N, C, H, W format for PyTorch Conv2D
+        x_train = x_train.reshape(-1, 3, config.task.image_dim, config.task.image_dim) 
+        x_test = x_test.reshape(-1, 3, config.task.image_dim, config.task.image_dim) 
+        
+    else:
+        raise ValueError("The CIFAR-10 image dimension is expected to be 32x32.")
+
+    #for debugging only
+    #return x_train[:10], y_train[:10], x_test[:10], y_test[:10]
+
     return x_train, y_train, x_test, y_test
+    

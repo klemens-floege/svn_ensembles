@@ -1,0 +1,7 @@
+
+
+dataset: "breast"
+
+dim_problem: 2 # 1 corresponds to binary classification
+file_path: "data/breast/wisconsin_breast_cancer_data.xlsx"  
+task_type: 'classification'

@@ -1,3 +1,6 @@
+import os
+import datetime 
+import wandb
 
 import numpy as np
 
@@ -6,40 +9,31 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
-from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold
+from sklearn.model_selection import train_test_split
 
-from models.mlp import initliase_mlp_models
-from models.lenet import initliase_lenet_models
+from models.mlp import initialise_mlp_models
+from models.lenet import initialise_lenet_models
+from models.wrn import initialise_resnet32_modellist
 
 from utils.kernel import RBF
 from utils.data import get_sine_data, get_gap_data, load_yacht_data, \
     load_energy_data, load_autompg_data, load_concrete_data, load_kin8nm_data, \
         load_protein_data, load_naval_data, load_power_data, load_parkinson_data, \
-        load_mnist_data, load_fashionmnist_data
+        load_mnist_data, load_fashionmnist_data, load_breast_data, load_heart_data, \
+        load_ionosphere_data, load_australian_data, load_cifar10_data
 from utils.plot import plot_modellist
 from utils.eval import regression_evaluate_modellist, classification_evaluate_modellist
 from train.train import train
+from utils.experiment_utils import Dataset, generate_model_path
 
-from sklearn.preprocessing import StandardScaler
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-from torch.utils.data import Dataset
 
-class Dataset(Dataset):
-    def __init__(self, x, y):
-        # Convert the numpy arrays to PyTorch tensors
-        self.x = torch.tensor(x, dtype=torch.float32).unsqueeze(1)
-        self.y = torch.tensor(y, dtype=torch.float32).unsqueeze(1)
 
-    def __len__(self):
-        # Return the size of the dataset
-        return len(self.x)
-
-    def __getitem__(self, idx):
-        # Retrieve an item by index
-        return self.x[idx], self.y[idx]
 
 
 
@@ -69,14 +63,28 @@ def run_experiment(cfg):
         x_train, y_train, x_test, y_test = load_power_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     elif cfg.task.dataset =="parkinsons":
         x_train, y_train, x_test, y_test = load_parkinson_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
+    elif cfg.task.dataset =="breast":
+        x_train, y_train, x_test, y_test = load_breast_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
+    elif cfg.task.dataset =="heart":
+        x_train, y_train, x_test, y_test = load_heart_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
+    elif cfg.task.dataset =="ionosphere":
+        x_train, y_train, x_test, y_test = load_ionosphere_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
+    elif cfg.task.dataset =="australian":
+        x_train, y_train, x_test, y_test = load_australian_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     elif cfg.task.dataset =="mnist":
         x_train, y_train, x_test, y_test = load_mnist_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     elif cfg.task.dataset =="fashionmnist":
         x_train, y_train, x_test, y_test = load_fashionmnist_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
+    elif cfg.task.dataset =="cifar10":
+        x_train, y_train, x_test, y_test = load_cifar10_data(config=cfg)
     else: 
         print('The configured dataset is not yet implemented')
         ValueError("The configured dataset is not yet implemented")
         return
+    
+
+   
+
 
     n_splits = cfg.experiment.n_splits  # Number of folds for k-fold CV
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=cfg.experiment.seed)
@@ -84,15 +92,58 @@ def run_experiment(cfg):
     x_combined = np.concatenate((x_train, x_test), axis=0)
     y_combined = np.concatenate((y_train, y_test), axis=0)
 
+
     if cfg.task.task_type == 'regression':
         n_metrics = 3 # metrics to track across folds
     elif cfg.task.task_type == 'classification':
         n_metrics = 6 # metrics to track across folds
 
     metrics_array = np.zeros((n_splits, n_metrics)) # Store metrics from each fold
+    model_path = generate_model_path(cfg)
     
     for fold, (train_idx, test_idx) in enumerate(kf.split(x_combined)):
         print(f"Running fold {fold + 1}/{n_splits}")
+
+        method = cfg.experiment.method
+        task = cfg.task.dataset
+        #wandb_group = cfg.experiment.wandb_group
+ 
+        if method == 'SVN':
+            active_tags = [f"Fold_{fold+1}", method, task, cfg.SVN.hessian_calc]
+        else:
+            active_tags = [method, f"Fold_{fold+1}", task]
+            
+        wandb.init( project="SVN_Ensembles", 
+                    tags=active_tags,
+                    entity="klemens-floege"
+                    #group=wandb_group
+                )
+
+         # Setting the configuration in WandB
+        if cfg.experiment.method == 'SVN': 
+            wandb.config.update({
+                "learning_rate": cfg.experiment.lr,
+                "num_epochs": cfg.experiment.num_epochs,
+                "batch_size": cfg.experiment.batch_size,
+                "early_stopping": cfg.experiment.early_stopping,
+                "dataset": cfg.task.dataset,
+                "method": cfg.experiment.method,
+                "task_type": cfg.task.task_type,
+                "n_splits": cfg.experiment.n_splits, 
+                "hessian_calc": cfg.SVN.hessian_calc,
+                "use_curvature_kernel": cfg.SVN.use_curvature_kernel
+            })
+        else: 
+            wandb.config.update({
+                "learning_rate": cfg.experiment.lr,
+                "num_epochs": cfg.experiment.num_epochs,
+                "batch_size": cfg.experiment.batch_size,
+                "early_stopping": cfg.experiment.early_stopping,
+                "dataset": cfg.task.dataset,
+                "method": cfg.experiment.method,
+                "task_type": cfg.task.task_type,
+                "n_splits": cfg.experiment.n_splits
+            })
         
         # Split data into training and validation for this fold
         x_train_fold, x_test_fold = x_combined[train_idx], x_combined[test_idx]
@@ -104,13 +155,15 @@ def run_experiment(cfg):
 
         if cfg.task.dataset in ['mnist', 'fashionmnist']:
             image_dim = cfg.task.image_dim
-            modellist = initliase_lenet_models(image_dim, output_dim, cfg)
+            modellist = initialise_lenet_models(image_dim, output_dim, cfg)
+        elif cfg.task.dataset in ['cifar10']:
+            modellist = initialise_resnet32_modellist(depth =34, widen_factor=1 , config=cfg)
         else: 
             scaler = StandardScaler()
             x_train_fold = scaler.fit_transform(x_train_fold)
             x_test_fold = scaler.transform(x_test_fold)
             input_dim = x_train.shape[1]  # Number of features in x_train
-            modellist = initliase_mlp_models(input_dim, output_dim, cfg)
+            modellist = initialise_mlp_models(input_dim, output_dim, cfg)
 
          # Split the training data into training and evaluation sets
         x_train_split, x_eval_split, y_train_split, y_eval_split = train_test_split(x_train_fold, y_train_fold, test_size=cfg.experiment.train_val_split, random_state=cfg.experiment.seed)
@@ -139,9 +192,26 @@ def run_experiment(cfg):
         if cfg.task.task_type == 'regression':
             test_MSE, test_rmse, test_nll = regression_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
             print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
+            # Log regression test metrics
+            wandb.run.summary.update({
+                "test_MSE": test_MSE,
+                "test_RMSE": test_rmse,
+                "test_NLL": test_nll,
+                "average_train_time_per_epoch": avg_train_time_per_epoch
+            })
         elif cfg.task.task_type == 'classification':
             test_accuracy, test_cross_entropy, test_entropy, test_nll, test_ece, test_brier = classification_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
             print(f"Test Acc: {test_accuracy:.4f}, Test CrossEntropy: {test_cross_entropy:.4f}, Test  Entropy: {test_entropy:.4f}, Test  NLL: {test_nll:.4f}, Test  ECE: {test_ece:.4f}, Test  Brier: {test_brier:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
+            # Log classification test metrics
+            wandb.run.summary.update({
+                "test_accuracy": test_accuracy,
+                "test_cross_entropy": test_cross_entropy,
+                "test_entropy": test_entropy,
+                "test_NLL": test_nll,
+                "test_ECE": test_ece,
+                "test_Brier": test_brier,
+                "average_train_time_per_epoch": avg_train_time_per_epoch
+            })
          
         
 
@@ -171,6 +241,24 @@ def run_experiment(cfg):
             metrics_array[fold] = [test_accuracy,test_cross_entropy,  test_nll, test_ece, test_brier, avg_train_time_per_epoch]
         
 
+        # Save model checkpoint if required
+        if cfg.experiment.save_model:
+            base_save_path = cfg.experiment.base_save_path
+            
+            modellist_path = os.path.join(base_save_path, model_path)
+
+            # Ensure the directory exists
+            if not os.path.exists(modellist_path):
+                os.makedirs(modellist_path)
+
+            save_path = os.path.join(modellist_path, f"model_fold{fold+1}.pt")
+            combined_state_dict = {f'model_{i}': model.state_dict() for i, model in enumerate(modellist)}
+    
+            torch.save(combined_state_dict, save_path)
+            print(f"Combined model state dictionary saved to {save_path}")
+            
+
+
         if fold== 0 and cfg.task.dataset in  ["sine", "gap"]: 
              # Constructing the save path
             save_path = "images/" + cfg.task.dataset
@@ -189,6 +277,10 @@ def run_experiment(cfg):
         
             plot_modellist(modellist, x_train_split, y_train_split, x_test, y_test, full_save_path)
 
+        wandb.finish()
+        
+
+
     
     # After all folds are complete, aggregate your metrics across folds to evaluate overall performance
     #aggregate_metrics(metrics_list)
@@ -206,4 +298,7 @@ def run_experiment(cfg):
         print(f"Average Test MSE: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Average Test NLL: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f},  Avg Time / Epoch: {metrics_mean[2]:.2f} ± {metrics_std[2]:.2f}")
     elif cfg.task.task_type == 'classification':
         print(f"Avg Test Accuracy: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Avg Test CrossEntr: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f}, Avg NLL: {metrics_mean[2]:.2f} ± {metrics_std[2]:.2f}, Avg Test ECE: {metrics_mean[3]:.2f} ± {metrics_std[3]:.2f}, Avg Test Brier: {metrics_mean[4]:.2f} ± {metrics_std[4]:.2f},  Avg Time / Epoch: {metrics_mean[5]:.2f} ± {metrics_std[5]:.2f}")
+
+
     
+    print('finish')

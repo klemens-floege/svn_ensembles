@@ -101,3 +101,15 @@ class WideResNet(nn.Module):
         out = F.avg_pool2d(out, 8)
         out = out.view(-1, self.nChannels)
         return self.fc(out)
+    
+
+def initialise_resnet32_modellist(depth, widen_factor, config):
+    n_particles = config.experiment.n_particles
+    num_classes = config.task.dim_problem
+    modellist = []
+    
+    for _ in range(n_particles):
+        resnet = WideResNet(depth=depth, widen_factor=widen_factor, num_classes=num_classes, dropRate=0.0)
+        modellist.append(resnet)
+
+    return modellist

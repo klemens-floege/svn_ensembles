@@ -1,0 +1,7 @@
+
+
+dataset: "ionosphere"
+
+dim_problem: 2 # 1 corresponds to binary classification
+file_path: "data/australian/australian_data.xlsx"
+task_type: 'classification'
