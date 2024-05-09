@@ -10,6 +10,8 @@ def apply_Ensemble(modellist, parameters,
 
     #print('loss', loss)
 
+    #print(torch.cuda.is_available())  #  True
+    #print(torch.backends.cudnn.enabled)  # True
     loss.sum().backward()
 
     
