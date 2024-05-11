@@ -165,8 +165,8 @@ def classification_evaluate_modellist(modellist, dataloader, device, config):
             ece = ECE_loss(probs_ensemble_pred, targets)
             brier = brier_scores(probs_ensemble_pred, targets, config.task.dim_problem)
             
-            auroc = AUROC(task="multiclass", num_classes=config.task.dim_problem)
-            auroc(probs_ensemble_pred, targets)
+            auroc_fn = AUROC(task="multiclass", num_classes=config.task.dim_problem)
+            auroc = auroc_fn(probs_ensemble_pred, targets)
             
             total_correct += (predicted_labels == targets).sum().item()
             total_nll += nll.sum().item() * inputs.size(0)
