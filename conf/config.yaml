@@ -11,6 +11,8 @@ experiment:
   grad_clip: False
   grad_clip_max_norm: 0.1
 
+  wandb_group: 'NeurIPS'
+
   num_epochs: 50
   batch_size: 16 
   lr: 0.01
@@ -20,7 +22,7 @@ experiment:
   early_stopping: False
 
   save_model: False
-  base_save_path: '/Users/klemens.floege/Desktop/dev/laplace_SVN/model_checkpoints'
+  base_save_path: '/p/project/hai_baylora/floege1/svn_ensembles/model_checkpoints'
   
   shuffle: True
   train_val_split: 0.20
