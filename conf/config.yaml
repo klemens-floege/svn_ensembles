@@ -39,6 +39,8 @@ SVN:
   hessian_calc_batch_size: 2
   use_curvature_kernel: "use_curvature"
 
+  classification_likelihood: True
+
   hessian_calc: "Full" # "Full", "Diag", "Kron", "LowRank"
   solve_method: "CG" # "Cholesky"
   block_diag_approx: False

@@ -51,11 +51,19 @@ def apply_SVN(modellist, parameters,
     else:
         inputs_squeezed = inputs.squeeze(1)
 
+    
+    if cfg.SVN.classification_likelihood and cfg.task.task_type == 'classification':
+        #print(targets.shape)
+        targets = targets.squeeze(1)
+        if inputs_squeezed.dtype != torch.float:
+            inputs_squeezed = inputs_squeezed.float()
+        if targets.dtype != torch.long:
+            targets = targets.long()
+
     hessian_particle_loader = data_utils.DataLoader(
         data_utils.TensorDataset(inputs_squeezed, targets), 
         batch_size=cfg.SVN.hessian_calc_batch_size
         )
-    
     
     hessians_list = []
     diag_hessian_list = []
@@ -65,14 +73,23 @@ def apply_SVN(modellist, parameters,
         #likelihood_type= cfg.task.task_type
 
         if cfg.SVN.hessian_calc == "Full":  
-            laplace_particle_model = FullLaplace(modellist[i], 
+            if cfg.SVN.classification_likelihood:
+                laplace_particle_model = FullLaplace(modellist[i], 
+                                                 likelihood=cfg.task.task_type)
+            else:
+                laplace_particle_model = FullLaplace(modellist[i], 
                                                  likelihood='regression')
             laplace_particle_model.fit(hessian_particle_loader)
             Hessian = laplace_particle_model.posterior_precision
             hessians_list.append(Hessian)
             
         elif cfg.SVN.hessian_calc == "Diag":  
-            laplace_particle_model = DiagLaplace(modellist[i], likelihood='regression')
+            if cfg.SVN.classification_likelihood:
+                laplace_particle_model = FullLaplace(modellist[i], 
+                                                 likelihood=cfg.task.task_type)
+            else:
+                laplace_particle_model = FullLaplace(modellist[i], 
+                                                 likelihood='regression')
             laplace_particle_model.fit(hessian_particle_loader)
             Hessian = laplace_particle_model.posterior_precision
             diag_hessian_list.append(Hessian)
