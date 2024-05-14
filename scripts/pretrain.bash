@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Define variables
-NUM_EPOCHS=20
-METHOD="SVN"
-LR=3e-2
-BATCH_SIZE=16
-TASK="kin8nm"
-JOB_NAME="${TASK}_${METHOD}_Full_${NUM_EPOCHS}Ep_${LR}lr_${BATCH_SIZE}Bsz"
+NUM_EPOCHS=5
+METHOD="SVGD"
+LR=3e-3
+BATCH_SIZE=128
+TASK="cifar10"
+JOB_NAME="${TASK}_pretraining_${METHOD}_${NUM_EPOCHS}Ep_${LR}lr_${BATCH_SIZE}Bsz"
 
 # Command to submit the job
 SUBMIT_CMD="sbatch --nodes=1 --ntasks=1 --time=8:00:00 --partition=normal --gres=gpu:4 \
@@ -14,12 +14,13 @@ SUBMIT_CMD="sbatch --nodes=1 --ntasks=1 --time=8:00:00 --partition=normal --gres
 --error=/home/hgf_hmgu/hgf_tfv0045/svn_ensembles/outputs/%x.err \
 -J \"$JOB_NAME\" \
 --wrap=\"source ~/.bash_profile; source myEnv/bin/activate; \
-srun python main.py task='$TASK' \
+srun python pretrain_main.py task='$TASK'  \
 experiment.method='$METHOD' experiment.num_epochs=$NUM_EPOCHS experiment.lr=$LR \
-SVN.use_curvature_kernel="use_curvature" \
-SVN.hessian_calc='Full' \
-SVN.block_diag_approx=False \
-experiment.batch_size=$BATCH_SIZE \""
+SVN.use_curvature_kernel="use_curvature"  \
+SVN.hessian_calc='Diag' \
+experiment.save_model=True \
+SVN.block_diag_approx=True \
+experiment.batch_size=$BATCH_SIZE\""
 
 # Execute the submission command
 echo "Submitting job: $JOB_NAME"

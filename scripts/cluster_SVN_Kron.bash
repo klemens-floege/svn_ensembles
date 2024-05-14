@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Define variables
-NUM_EPOCHS=1
+NUM_EPOCHS=50
 METHOD="SVN"
-LR=5e-3
-BATCH_SIZE=64
-TASK="energy"
-JOB_NAME="${TASK}_${METHOD}_Kron_${NUM_EPOCHS}Ep_${LR}lr_${BATCH_SIZE}Bsz"
+LR=1e-2
+BATCH_SIZE=32
+TASK="protein"
+JOB_NAME="All_${TASK}_${METHOD}_Kron_${NUM_EPOCHS}Ep_${LR}lr_${BATCH_SIZE}Bsz"
 
 # Command to submit the job
 SUBMIT_CMD="sbatch --nodes=1 --ntasks=1 --time=8:00:00 --partition=normal --gres=gpu:4 \
@@ -17,9 +17,10 @@ SUBMIT_CMD="sbatch --nodes=1 --ntasks=1 --time=8:00:00 --partition=normal --gres
 srun python main.py task='$TASK' \
 experiment.method='$METHOD' experiment.num_epochs=$NUM_EPOCHS experiment.lr=$LR \
 SVN.use_curvature_kernel="no_curv" \
-SVN.hessian_calc='Kron' \
+SVN.hessian_calc='Kron'  \
+SVN.hessian_calc_batch_size=4 \
 SVN.block_diag_approx=True \
-experiment.batch_size=$BATCH_SIZE\""
+experiment.batch_size=$BATCH_SIZE \""
 
 # Execute the submission command
 echo "Submitting job: $JOB_NAME"
