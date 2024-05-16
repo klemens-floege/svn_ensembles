@@ -11,15 +11,17 @@ import torch.nn.functional as F
 ##########################################################################################
 # Taken from https://github.com/hendrycks/outlier-exposure/blob/master/CIFAR/models/wrn.py
 
-class BasicBlock(nn.Module):
+'''class BasicBlock(nn.Module):
     def __init__(self, in_planes, out_planes, stride, dropRate=0.0):
         super(BasicBlock, self).__init__()
         self.bn1 = nn.BatchNorm2d(in_planes)
         self.relu1 = nn.ReLU(inplace=True)
+        #self.relu1 = nn.ReLU(inplace=False)
         self.conv1 = nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                                padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(out_planes)
         self.relu2 = nn.ReLU(inplace=True)
+        #self.relu2 = nn.ReLU(inplace=False)
         self.conv2 = nn.Conv2d(out_planes, out_planes, kernel_size=3, stride=1,
                                padding=1, bias=False)
         self.droprate = dropRate
@@ -79,6 +81,7 @@ class WideResNet(nn.Module):
         # global average pooling and classifier
         self.bn1 = nn.BatchNorm2d(nChannels[3])
         self.relu = nn.ReLU(inplace=True)
+        #self.relu = nn.ReLU(inplace=False)
         self.fc = nn.Linear(nChannels[3], num_classes)
         self.nChannels = nChannels[3]
 
@@ -100,8 +103,17 @@ class WideResNet(nn.Module):
         out = self.relu(self.bn1(out))
         out = F.avg_pool2d(out, 8)
         out = out.view(-1, self.nChannels)
-        return self.fc(out)
-    
+        return self.fc(out)'''
+
+def basic_block(in_planes, out_planes, stride=1):
+            return nn.Sequential(
+                nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False),
+                nn.BatchNorm2d(out_planes),
+                nn.ReLU(inplace=False),
+                nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False),
+                nn.BatchNorm2d(out_planes),
+                nn.ReLU(inplace=False)
+            )
 
 def initialise_resnet32_modellist(depth, widen_factor, config):
     n_particles = config.experiment.n_particles
@@ -109,7 +121,37 @@ def initialise_resnet32_modellist(depth, widen_factor, config):
     modellist = []
     
     for _ in range(n_particles):
-        resnet = WideResNet(depth=depth, widen_factor=widen_factor, num_classes=num_classes, dropRate=0.0)
+        #resnet = WideResNet(depth=depth, widen_factor=widen_factor, num_classes=num_classes, dropRate=0.0)
+
+        resnet = nn.Sequential(
+            nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(16),
+            nn.ReLU(inplace=False),
+            basic_block(16, 16),
+            basic_block(16, 16),
+            basic_block(16, 16),
+            basic_block(16, 16),
+            basic_block(16, 16),
+            nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1, bias=False),  # Downsample
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=False),
+            basic_block(32, 32),
+            basic_block(32, 32),
+            basic_block(32, 32),
+            basic_block(32, 32),
+            basic_block(32, 32),
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1, bias=False),  # Downsample
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=False),
+            basic_block(64, 64),
+            basic_block(64, 64),
+            basic_block(64, 64),
+            basic_block(64, 64),
+            basic_block(64, 64),
+            nn.AdaptiveAvgPool2d((1, 1)),  # Global average pooling
+            nn.Flatten(),
+            nn.Linear(64, 10)  # Adjust the number of output classes as necessary
+        )
         modellist.append(resnet)
 
     return modellist

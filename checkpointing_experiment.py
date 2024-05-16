@@ -41,15 +41,19 @@ def increment_checkpoint_path(original_path):
         n = int(match.group(1))  # Get the integer n
         new_n = n + 1  # Increment n by 1
         # Create the new filename by replacing n with n+1
-        new_filename = filename.replace(f'checkpoint_{n}.pt', f'checkpoint_{new_n}.pt')
+        #new_filename = filename.replace(f'checkpoint_{n}.pt', f'checkpoint_{new_n}.pt')
+        new_filename = re.sub(r'checkpoint_\d+\.pt', f'checkpoint_{new_n}.pt', filename)
         # Combine the base directory with the new filename
-        #new_path = os.path.join(base_dir, new_filename)
-        #return new_path
-        return base_dir, f'checkpoint_{new_n}.pt'
-    
+        print(new_filename)
+        
     else:
-        print("The filename does not match the expected pattern.")
-        return None
+        # If there is no match, assume no checkpoint number and append one
+        new_filename = filename.replace('.pt', '') + '_checkpoint_0.pt'  # Remove '.pt' and add '_checkpoint_0.pt'
+    
+    # Combine the base directory with the new filename
+    new_path = os.path.join(base_dir, new_filename)
+    return new_path
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -154,11 +158,12 @@ def run_checkpointing_experiment(cfg):
 
     modellist = []  # This should be your logic to load models
     # Initialize or load model list based on config
-    if cfg.experiment.load_pretrained:
+    if cfg.Checkpointing.load_pretrained:
         print('start laoding')
         fold = 0
         #model_path = 'mnist/Ensemble/batch16_ep4_lr0.03/2024-05-11_22-03-39'
-        model_path = 'mnist/Ensemble/batch16_ep4_lr0.03/2024-05-11_22-03-39/checkpoint_1.pt'
+        #model_path = 'mnist/Ensemble/batch16_ep4_lr0.03/2024-05-11_22-03-39/checkpoint_1.pt'
+        model_path = cfg.Checkpointing.model_path
         #checkpoint_path = os.path.join(cfg.experiment.base_save_path, model_path,  f"model_fold{fold+1}.pt")
         checkpoint_path = os.path.join(cfg.experiment.base_save_path, model_path)
         
@@ -229,20 +234,21 @@ def run_checkpointing_experiment(cfg):
 
      # Save model checkpoint if required
     if cfg.experiment.save_model:
-        modellist_path = '/Users/klemens.floege/Desktop/dev/laplace_SVN/model_checkpoints/mnist/Ensemble/batch16_ep4_lr0.03/2024-05-11_22-03-39'
+        #modellist_path = '/Users/klemens.floege/Desktop/dev/laplace_SVN/model_checkpoints/mnist/Ensemble/batch16_ep4_lr0.03/2024-05-11_22-03-39'
         
         #modellist_path = os.path.join(base_save_path, model_path)
         print('Saving the model')
-        print(checkpoint_path)
-        #modellist_path = increment_checkpoint_path(checkpoint_path)
-        base_dir, cpt_string = increment_checkpoint_path(checkpoint_path)
         
-        print(base_dir)
+        #modellist_path = increment_checkpoint_path(checkpoint_path)
+        #base_dir, cpt_string = increment_checkpoint_path(checkpoint_path)
+        save_path = increment_checkpoint_path(checkpoint_path)
+        print(save_path)
+        #print(base_dir)
  
         #if not os.path.exists(modellist_path):
         #    os.makedirs(modellist_path)
         
-        save_path = os.path.join(base_dir, cpt_string)
+        #save_path = os.path.join(base_dir, cpt_string)
 
         
         combined_state_dict = {f'model_{i}': model.state_dict() for i, model in enumerate(modellist)}

@@ -21,8 +21,10 @@ experiment:
 
   early_stopping: False
 
+  wandb_group: 'NeurIPS'
+
   save_model: False
-  base_save_path: '/p/project/hai_baylora/floege1/svn_ensembles/model_checkpoints'
+  base_save_path: '/home/hgf_hmgu/hgf_tfv0045/svn_ensembles/model_checkpoints'
   
   shuffle: True
   train_val_split: 0.20
@@ -34,10 +36,16 @@ experiment:
   method: "SVN" # "SVN", "SVGD", "Ensemble" 
   n_particles: 5
 
+Checkpointing:
+  load_pretrained: True
+  model_path: False
+
 SVN: 
   red_dist_std: 0.1
   hessian_calc_batch_size: 2
   use_curvature_kernel: "use_curvature"
+
+  classification_likelihood: True
 
   hessian_calc: "Full" # "Full", "Diag", "Kron", "LowRank"
   solve_method: "CG" # "Cholesky"
