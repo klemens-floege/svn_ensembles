@@ -1,0 +1,7 @@
+
+
+dataset: "wine"
+
+dim_problem: 1
+file_path: 'data/wine/winequality-red.csv'
+task_type: 'regression'
