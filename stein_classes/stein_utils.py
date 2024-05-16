@@ -188,11 +188,14 @@ def kfac_hessian_matvec_block(input, squared_kernel, grad_K_i, kron, device):
 def diag_hessian_matvec_block(input, squared_kernel, grad_K_i, diag_hessian, device):
 
         
-        input = torch.tensor(input).float().to(device)
-        squared_kernel = torch.tensor(squared_kernel).float().to(device)
+        input = torch.tensor(input).float().detach().to(device)
+        #squared_kernel = torch.tensor(squared_kernel).float().to(device)
         #kernels_grads = torch.tensor(kernels_grads).float().to(device)
-        grad_K_i = torch.tensor(grad_K_i).float().to(device)
-        diag_hessian = torch.tensor(diag_hessian).float().to(device)
+        #grad_K_i = torch.tensor(grad_K_i).float().to(device)
+        #diag_hessian = torch.tensor(diag_hessian).float().to(device)
+        squared_kernel = squared_kernel.clone().detach().float().to(device)
+        grad_K_i = grad_K_i.clone().detach().float().to(device)
+        diag_hessian = diag_hessian.clone().detach().float().to(device)
 
         #kernel_grads_vector = torch.sum(grad_K_i.T * grad_K_i, dim=1)  # Element-wise multiplication and sum along rows
         kernel_grads_vector = torch.matmul(torch.matmul(grad_K_i.T, grad_K_i), input)

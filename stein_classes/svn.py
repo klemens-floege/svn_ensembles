@@ -94,10 +94,10 @@ def apply_SVN(modellist, parameters,
             
         elif cfg.SVN.hessian_calc == "Diag":  
             if cfg.SVN.classification_likelihood:
-                laplace_particle_model = FullLaplace(modellist[i], 
+                laplace_particle_model = DiagLaplace(modellist[i], 
                                                  likelihood=cfg.task.task_type)
             else:
-                laplace_particle_model = FullLaplace(modellist[i], 
+                laplace_particle_model = DiagLaplace(modellist[i], 
                                                  likelihood='regression')
             laplace_particle_model.fit(hessian_particle_loader)
             Hessian = laplace_particle_model.posterior_precision
@@ -197,16 +197,6 @@ def apply_SVN(modellist, parameters,
 
     
     if cfg.SVN.hessian_calc == "Full":  
-        H1 = torch.einsum("xy, xz, xbd -> yzbd", K_XX, K_XX, hessians_tensor) #(n_particles, n_particles, n_parametes_per_model, n_parametes_per_model)
-        H2 = torch.einsum('xzi,xzj -> zij', grad_K, grad_K) #(n_particles, n_parametes_per_model, n_parametes_per_model)
-        
-        #adds H2 values to diagonal of H1
-        H1[range(n_particles), range(n_particles)] += H2
-
-        N, _, D, _ = H1.shape  # Extract N and D from the shape of H
-        H_reshaped = H1.permute(0, 2, 1, 3).reshape(N*D, N*D)  # Reshape to [N*D, N*D] ,  #(n_particles*n_parametes_per_model, n_particles*n_parametes_per_model)
-        H =  H_reshaped / n_particles
-        H_op = H.detach().cpu().numpy()
 
         if cfg.SVN.block_diag_approx:
             alpha_list = []
@@ -222,6 +212,18 @@ def apply_SVN(modellist, parameters,
             alphas = torch.stack(alpha_list, dim=0).view(n_particles, -1)
             alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
             v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
+
+        else: 
+            H1 = torch.einsum("xy, xz, xbd -> yzbd", K_XX, K_XX, hessians_tensor) #(n_particles, n_particles, n_parametes_per_model, n_parametes_per_model)
+            H2 = torch.einsum('xzi,xzj -> zij', grad_K, grad_K) #(n_particles, n_parametes_per_model, n_parametes_per_model)
+            
+            #adds H2 values to diagonal of H1
+            H1[range(n_particles), range(n_particles)] += H2
+
+            N, _, D, _ = H1.shape  # Extract N and D from the shape of H
+            H_reshaped = H1.permute(0, 2, 1, 3).reshape(N*D, N*D)  # Reshape to [N*D, N*D] ,  #(n_particles*n_parametes_per_model, n_particles*n_parametes_per_model)
+            H =  H_reshaped / n_particles
+            H_op = H.detach().cpu().numpy()
     
     elif cfg.SVN.hessian_calc == "Diag":  
         N = n_particles
@@ -242,6 +244,28 @@ def apply_SVN(modellist, parameters,
             alphas = torch.stack(alpha_list, dim=0).view(n_particles, -1)
             alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
             v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
+        else:
+            H1 = torch.einsum("xy, xz, xb -> yzb", K_XX, K_XX, hessians_tensor) #(n_particles, n_particles, n_parametes_per_model)
+            H2 = torch.einsum('xzi,xzj -> zij', grad_K, grad_K) #(n_particles, n_parametes_per_model, n_parametes_per_model)
+            
+            #adds H2 values to diagonal of H1
+            print(H1.shape)
+            print(H2.shape)
+            # Ensure H1 and H2 shapes are consistent for matmul
+            H1_diag = H1[range(n_particles), range(n_particles)]  # Shape [n_particles, n_parameters_per_model]
+            print("H1_diag shape:", H1_diag.shape)
+            # Perform the matmul operation
+            result = torch.matmul(H1_diag, H2)  # Shape [n_particles, n_parameters_per_model]
+            print("Result shape:", result.shape)
+            #H1[range(n_particles), range(n_particles)] = torch.matmul(H1[range(n_particles), range(n_particles)], H2)
+            H1[range(n_particles), range(n_particles)] = result
+            print("Updated H1 shape:", H1.shape)
+
+
+            N, _, D, _ = H1.shape  # Extract N and D from the shape of H
+            H_reshaped = H1.permute(0, 2, 1, 3).reshape(N*D, N*D)  # Reshape to [N*D, N*D] ,  #(n_particles*n_parametes_per_model, n_particles*n_parametes_per_model)
+            H =  H_reshaped / n_particles
+            H_op = H.detach().cpu().numpy()
 
     elif cfg.SVN.hessian_calc == "Kron":          
         # Create a linear operator that represents your Hessian vector product: Hx
