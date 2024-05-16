@@ -88,7 +88,8 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
           ValueError("Approximate Bayesian Inference method not implemented ")
           return
             
-      wandb.log({"loss": loss.mean().item()})  # Log loss at each batch step
+      if cfg.experiment.wandb_logging:
+        wandb.log({"loss": loss.mean().item()})  # Log loss at each batch step
       #global_step += 1  # Increment global step after logging
 
       optimizer.step()
@@ -100,6 +101,14 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
       eval_MSE, eval_rmse, eval_NLL = regression_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
       best_metric_tracker = eval_MSE
       print(f"Epoch {epoch}: MSE: {eval_MSE:.4f}, RMSE: {eval_rmse:.4f}, NLL: {eval_NLL:.4f}")
+       # Log evaluation metrics after each epoch
+      metrics_to_log = {
+            "epoch": epoch, "eval_MSE": eval_MSE, "eval_RMSE": eval_rmse,
+           "eval_NLL": eval_NLL, "time_per_epoch": time.time() - start_time
+      }
+      if cfg.experiment.wandb_logging:
+        wandb.log(metrics_to_log)
+      global_step += 1  # Increment to differentiate from batch logging
     elif cfg.task.task_type == 'classification':
       eval_accuracy, eval_cross_entropy, eval_entropy, eval_NLL, eval_ECE, eval_Brier, eval_AUROC = classification_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
       best_metric_tracker = eval_cross_entropy

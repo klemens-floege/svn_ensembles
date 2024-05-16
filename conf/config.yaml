@@ -11,7 +11,8 @@ experiment:
   grad_clip: False
   grad_clip_max_norm: 0.1
 
-  wandb_group: 'NeurIPS'
+  wandb_group: 'Plots'
+  wandb_logging: True
 
   num_epochs: 50
   batch_size: 16 
@@ -24,8 +25,8 @@ experiment:
   wandb_group: 'NeurIPS'
 
   save_model: False
-  base_save_path: '/home/hgf_hmgu/hgf_tfv0045/svn_ensembles/model_checkpoints'
-  
+  base_save_path: '/Users/klemens.floege/Desktop/Dev/laplace_SVN/model_checkpoints/'
+
   shuffle: True
   train_val_split: 0.20
 
@@ -35,6 +36,17 @@ experiment:
 
   method: "SVN" # "SVN", "SVGD", "Ensemble" 
   n_particles: 5
+  
+
+
+Checkpointing:
+  load_pretrained: True
+  model_path: False
+  last_layer_only: True
+
+Checkpointing:
+  load_pretrained: True
+  model_path: False
 
 Checkpointing:
   load_pretrained: True
@@ -50,3 +62,5 @@ SVN:
   hessian_calc: "Full" # "Full", "Diag", "Kron", "LowRank"
   solve_method: "CG" # "Cholesky"
   block_diag_approx: False
+  
+  ll: False

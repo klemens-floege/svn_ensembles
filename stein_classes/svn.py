@@ -5,7 +5,8 @@ import scipy
 import numpy as np
 
 from laplace import FullLaplace, KronLaplace, DiagLaplace, LowRankLaplace
-from laplace.curvature import AsdlGGN, AsdlEF
+from laplace.curvature import AsdlGGN, AsdlEF, GGNInterface
+from laplace import Laplace
 
 from stein_classes.loss import calc_loss
 from stein_classes.stein_utils import hessian_matvec, kfac_hessian_matvec_block, diag_hessian_matvec_block
@@ -60,6 +61,13 @@ def apply_SVN(modellist, parameters,
         if targets.dtype != torch.long:
             targets = targets.long()
 
+    #print(targets.shape)
+    '''targets = targets.squeeze(1)
+    if inputs_squeezed.dtype != torch.float:
+        inputs_squeezed = inputs_squeezed.float()
+    if targets.dtype != torch.long:
+        targets = targets.long()'''
+
     hessian_particle_loader = data_utils.DataLoader(
         data_utils.TensorDataset(inputs_squeezed, targets), 
         batch_size=cfg.SVN.hessian_calc_batch_size
@@ -79,8 +87,9 @@ def apply_SVN(modellist, parameters,
             else:
                 laplace_particle_model = FullLaplace(modellist[i], 
                                                  likelihood='regression')
-            laplace_particle_model.fit(hessian_particle_loader)
-            Hessian = laplace_particle_model.posterior_precision
+            
+                laplace_particle_model.fit(hessian_particle_loader)
+                Hessian = laplace_particle_model.posterior_precision
             hessians_list.append(Hessian)
             
         elif cfg.SVN.hessian_calc == "Diag":  
@@ -97,11 +106,20 @@ def apply_SVN(modellist, parameters,
         elif cfg.SVN.hessian_calc == "Kron":  
             #backend = AsdlGGN if args.approx_type == 'ggn' else AsdlEF
             #TODO: double check AsdL
-            laplace_particle_model = KronLaplace(modellist[i], 
+            if cfg.SVN.ll:
+                laplace_particle_model = Laplace(modellist[i], 'regression')
+                        #subset_of_weights='last_layer',
+                        #hessian_structure='Full'
+                            
+                laplace_particle_model.fit(hessian_particle_loader)
+            else:
+                laplace_particle_model = KronLaplace(modellist[i], 
                                                  likelihood='regression'                                                 
                                                  )
-            laplace_particle_model.fit(hessian_particle_loader)
+                laplace_particle_model.fit(hessian_particle_loader)
             kron_decomposed = laplace_particle_model.posterior_precision
+            print(kron_decomposed.eigenvalues[0][1].shape)
+            print(kron_decomposed.eigenvectors[0][0].shape)
             kron_list.append(kron_decomposed)
 
         elif cfg.SVN.hessian_calc == "LowRank":  
@@ -189,6 +207,21 @@ def apply_SVN(modellist, parameters,
         H_reshaped = H1.permute(0, 2, 1, 3).reshape(N*D, N*D)  # Reshape to [N*D, N*D] ,  #(n_particles*n_parametes_per_model, n_particles*n_parametes_per_model)
         H =  H_reshaped / n_particles
         H_op = H.detach().cpu().numpy()
+
+        if cfg.SVN.block_diag_approx:
+            alpha_list = []
+            cg_maxiter = 50
+            for i in range(n_particles):
+                v_svgd_part = v_svgd[i].squeeze().detach().cpu().flatten().numpy()
+                squared_kernel = K_XX**2
+                H_part= hessians_tensor[i]*  squared_kernel[i][i] + torch.matmul(grad_K[i].T, grad_K[i])
+                H_op_part = H_part.detach().cpu().numpy()
+                alpha_part, _ = scipy.sparse.linalg.cg(H_op_part, v_svgd_part, maxiter=cg_maxiter)
+                alpha_part = torch.tensor(alpha_part, dtype=torch.float32).to(device)
+                alpha_list.append(alpha_part)
+            alphas = torch.stack(alpha_list, dim=0).view(n_particles, -1)
+            alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
+            v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
     
     elif cfg.SVN.hessian_calc == "Diag":  
         N = n_particles

@@ -180,6 +180,17 @@ def load_protein_data(test_size_split, seed, config):
     
     return x_train, y_train, x_test, y_test
 
+def load_wine_data(test_size_split, seed, config):
+    file_path =  config.task.file_path 
+    df = pd.read_csv(file_path, sep=';')
+    
+    # Preprocess the data
+    X = df.drop(columns=['quality']).values
+    y = df['quality'].values
+    
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size_split, random_state=seed)
+    return x_train, y_train, x_test, y_test
+
 def load_parkinson_data(test_size_split, seed, config):
     file_path =  config.task.file_path 
     data = pd.read_excel(file_path, skiprows=[0])

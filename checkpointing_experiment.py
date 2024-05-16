@@ -43,6 +43,8 @@ def increment_checkpoint_path(original_path):
         # Create the new filename by replacing n with n+1
         #new_filename = filename.replace(f'checkpoint_{n}.pt', f'checkpoint_{new_n}.pt')
         new_filename = re.sub(r'checkpoint_\d+\.pt', f'checkpoint_{new_n}.pt', filename)
+        #new_filename = filename.replace(f'checkpoint_{n}.pt', f'checkpoint_{new_n}.pt')
+        new_filename = re.sub(r'checkpoint_\d+\.pt', f'checkpoint_{new_n}.pt', filename)
         # Combine the base directory with the new filename
         print(new_filename)
         
@@ -164,8 +166,13 @@ def run_checkpointing_experiment(cfg):
         #model_path = 'mnist/Ensemble/batch16_ep4_lr0.03/2024-05-11_22-03-39'
         #model_path = 'mnist/Ensemble/batch16_ep4_lr0.03/2024-05-11_22-03-39/checkpoint_1.pt'
         model_path = cfg.Checkpointing.model_path
+        print('base save path', cfg.experiment.base_save_path)
+        print('model path ', model_path)
+
         #checkpoint_path = os.path.join(cfg.experiment.base_save_path, model_path,  f"model_fold{fold+1}.pt")
         checkpoint_path = os.path.join(cfg.experiment.base_save_path, model_path)
+        
+        print('checkpointing path: ', checkpoint_path)
         
         if os.path.exists(checkpoint_path):
             print(f"Loading models from {checkpoint_path}")
@@ -185,7 +192,23 @@ def run_checkpointing_experiment(cfg):
     print('modellist loaded')
     print(modellist)
 
-    
+    if cfg.Checkpointing.last_layer_only:
+        for model in modellist:
+            # Set requires_grad to False for all parameters first
+            for param in model.parameters():
+                param.requires_grad = False
+            
+            print('last layer ', model[-1])
+            # Enable requires_grad for the last layer's parameters
+            # Assuming the last layer is always the last entry in your Sequential model
+            for param in model[-1].parameters():
+                param.requires_grad = True
+     
+     # Calculate the number of trainable parameters
+    trainable_params = sum(p.numel() for p in modellist[i].parameters() if p.requires_grad)
+    print(f'Model {i}: Trainable parameters = {trainable_params}')
+
+
     # Split the data into training and evaluation sets
     x_train_split, x_eval_split, y_train_split, y_eval_split = train_test_split(x_train, y_train, test_size=cfg.experiment.train_val_split, random_state=cfg.experiment.seed)
     
