@@ -120,7 +120,8 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
             "eval_entropy": eval_entropy, "eval_NLL": eval_NLL, "eval_ECE": eval_ECE, "eval_Brier": eval_Brier,
             "eval_AUROC": eval_AUROC, "time_per_epoch": time.time() - start_time
       }
-      wandb.log(metrics_to_log)
+      if cfg.experiment.wandb_logging:
+        wandb.log(metrics_to_log)
       global_step += 1  # Increment to differentiate from batch logging
       
 

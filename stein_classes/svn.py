@@ -118,28 +118,7 @@ def apply_SVN(modellist, parameters,
                                                  )
                 laplace_particle_model.fit(hessian_particle_loader)
             kron_decomposed = laplace_particle_model.posterior_precision
-            print(kron_decomposed.eigenvalues[0][1].shape)
-            print(kron_decomposed.eigenvectors[0][0].shape)
             kron_list.append(kron_decomposed)
-
-        elif cfg.SVN.hessian_calc == "LowRank":  
-            laplace_particle_model = LowRankLaplace(modellist[i], likelihood='regression')
-            laplace_particle_model.fit(hessian_particle_loader)
-            Hessian = laplace_particle_model.posterior_precision
-            #print(type(Hessian)) #<class 'tuple'> 
-            #print(Hessian)
-
-            print(len(Hessian)) # 2, (weights and biases)
-            print(type(Hessian[0]))
-            print(type(Hessian[1]))
-            print(Hessian[0][0].shape) #torch.Size([1021, 7])
-            print(Hessian[0][1].shape) #torch.Size([7])
-            print(Hessian[1][0].shape) #torch.Size([])
-            print(Hessian[1][1].shape) #torch.Size([])
-
-            print(Hessian)
-            #print(Hessian.shape)
-            hessians_list.append(Hessian)
             
         else: 
             ValueError("This is type of Hessian calculation is not yet implemented")
@@ -271,6 +250,20 @@ def apply_SVN(modellist, parameters,
         # Create a linear operator that represents your Hessian vector product: Hx
         N = n_particles
         D = n_parameters
+
+        if cfg.SVN.ll: 
+            last_layer_params = 0
+            eigenvalues = kron_decomposed.eigenvalues
+            eigenvectors = kron_decomposed.eigenvectors
+            for eigenvalues_layer, eigenvectors_layer in zip(eigenvalues, eigenvectors):
+                if len(eigenvalues_layer) > 1:
+                    V_K, V_Q = eigenvectors_layer
+                    num_elements_K = V_K.shape[0]
+                    num_elements_Q = V_Q.shape[0]
+                    last_layer_params += num_elements_K * num_elements_Q
+                else:
+                    lambda_bias = eigenvalues_layer[0]
+                    last_layer_params += lambda_bias.numel()
         
         if cfg.SVN.block_diag_approx:
             alpha_list = []
@@ -278,17 +271,34 @@ def apply_SVN(modellist, parameters,
             for i in range(n_particles):
                 v_svgd_part = v_svgd[i].squeeze().detach().cpu().flatten().numpy()
                 squared_kernel = K_XX**2
-                #kernels_grads = torch.matmul(grad_K[i].T, grad_K[i])
-                H_op_part = scipy.sparse.linalg.LinearOperator((D, D), matvec=lambda x: kfac_hessian_matvec_block(x, squared_kernel[i][i],grad_K[i], kron_list[i], device))
-                alpha_part, _ = scipy.sparse.linalg.cg(H_op_part, v_svgd_part, maxiter=cg_maxiter)
+                if cfg.SVN.ll:
+                    grad_K_i_last_layer = grad_K[i][:, -last_layer_params:]
+                    H_op_part = scipy.sparse.linalg.LinearOperator((last_layer_params, last_layer_params), matvec=lambda x: kfac_hessian_matvec_block(x, squared_kernel[i][i],grad_K_i_last_layer, kron_list[i], device))
+                    alpha_part, _ = scipy.sparse.linalg.cg(H_op_part, v_svgd_part[-last_layer_params:], maxiter=cg_maxiter)
+                else:
+                    H_op_part = scipy.sparse.linalg.LinearOperator((D, D), matvec=lambda x: kfac_hessian_matvec_block(x, squared_kernel[i][i],grad_K[i], kron_list[i], device))
+                    alpha_part, _ = scipy.sparse.linalg.cg(H_op_part, v_svgd_part, maxiter=cg_maxiter)
                 alpha_part = torch.tensor(alpha_part, dtype=torch.float32).to(device)
                 alpha_list.append(alpha_part)
             alphas = torch.stack(alpha_list, dim=0).view(n_particles, -1)
-            alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
-            v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
+            if cfg.SVN.ll:
+                alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, last_layer_params)
+                ll_v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, last_layer_params)
+                v_svn = v_svgd
+                v_svn[:, -last_layer_params:] = ll_v_svn
+
+            else:
+                alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
+                v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
         else: 
-            H2 = torch.einsum('xzi,xzj -> zij', grad_K, grad_K) #(n_particles, n_parametes_per_model, n_parametes_per_model)
-            H_op = scipy.sparse.linalg.LinearOperator((N*D, N*D), matvec=lambda x: hessian_matvec(x, K_XX, kron_list, H2, n_parameters))
+            if cfg.SVN.ll:
+                L = last_layer_params
+                last_layer_grad_K = grad_K[:,:, -last_layer_params:]
+                H2 = torch.einsum('xzi,xzj -> zij', last_layer_grad_K, last_layer_grad_K) #(n_particles, n_parametes_per_model, n_parametes_per_model)
+                H_op = scipy.sparse.linalg.LinearOperator((N*L, N*L), matvec=lambda x: hessian_matvec(x, K_XX, kron_list, H2, last_layer_params, device))
+            else:
+                H2 = torch.einsum('xzi,xzj -> zij', grad_K, grad_K) #(n_particles, n_parametes_per_model, n_parametes_per_model)
+                H_op = scipy.sparse.linalg.LinearOperator((N*D, N*D), matvec=lambda x: hessian_matvec(x, K_XX, kron_list, H2, n_parameters, device))
 
 
     solve_method = 'CG'
@@ -298,16 +308,26 @@ def apply_SVN(modellist, parameters,
         
         cg_maxiter = 50        
 
-        v_svgd_numpy = v_svgd.detach().cpu().flatten().numpy()
-        score_func_numpy = score_func_tensor.detach().cpu().flatten().numpy()
 
-        alphas, _ = scipy.sparse.linalg.cg(H_op, v_svgd_numpy, maxiter=cg_maxiter)
-        alphas = torch.tensor(alphas, dtype=torch.float32).reshape(n_particles, n_parameters).to(device)                
-        alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
-        
-        v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
+        if cfg.SVN.ll and cfg.SVN.hessian_calc=='Kron':
+            last_layer_v_svgd = v_svgd[:, -last_layer_params:]
+            ll_v_svgd_numpy = last_layer_v_svgd.detach().cpu().flatten().numpy()
+            alphas, _ = scipy.sparse.linalg.cg(H_op, ll_v_svgd_numpy, maxiter=cg_maxiter)
+            alphas = torch.tensor(alphas, dtype=torch.float32).to(device)                
+        else:
+            v_svgd_numpy = v_svgd.detach().cpu().flatten().numpy()
+            alphas, _ = scipy.sparse.linalg.cg(H_op, v_svgd_numpy, maxiter=cg_maxiter)
+            alphas = torch.tensor(alphas, dtype=torch.float32).reshape(n_particles, n_parameters).to(device)                
 
+        if cfg.SVN.ll:
+            alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, last_layer_params)
+            ll_v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, last_layer_params)
+            v_svn = v_svgd
+            v_svn[:, -last_layer_params:] = ll_v_svn
 
+        else:
+            alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
+            v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
 
     elif solve_method == 'Cholesky':
         lamb = 0.01

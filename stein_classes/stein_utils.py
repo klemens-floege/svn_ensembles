@@ -129,7 +129,7 @@ def hessian_matvec(input, K_XX, kron_list, H2, n_parameters, device):
         result = torch.zeros_like(torch.tensor(input)).to(device)
 
         input = torch.tensor(input).float().to(device)
-        grad_K = torch.tensor(grad_K).float().to(device)
+        #grad_K = torch.tensor(grad_K).float().to(device)
         K_XX = torch.tensor(K_XX).float().to(device)
         H2 = torch.tensor(H2).float().to(device)
 
