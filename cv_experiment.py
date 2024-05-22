@@ -61,8 +61,6 @@ def run_experiment(cfg):
         x_train, y_train, x_test, y_test = load_protein_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     elif cfg.task.dataset =="power":
         x_train, y_train, x_test, y_test = load_power_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="wine":
-        x_train, y_train, x_test, y_test = load_wine_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     elif cfg.task.dataset =="parkinsons":
         x_train, y_train, x_test, y_test = load_parkinson_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     elif cfg.task.dataset =="breast":
@@ -79,6 +77,8 @@ def run_experiment(cfg):
         x_train, y_train, x_test, y_test = load_fashionmnist_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     elif cfg.task.dataset =="cifar10":
         x_train, y_train, x_test, y_test = load_cifar10_data(config=cfg)
+    elif cfg.task.dataset =="wine":
+        x_train, y_train, x_test, y_test = load_wine_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     else: 
         print('The configured dataset is not yet implemented')
         ValueError("The configured dataset is not yet implemented")
@@ -116,39 +116,37 @@ def run_experiment(cfg):
             active_tags = [method, f"Fold_{fold+1}", task]
             
         wandb_group = cfg.experiment.wandb_group
+        wandb.init( project="SVN_Ensembles", 
+                    tags=active_tags,
+                    entity="klemens-floege",
+                    group=wandb_group
+                )
 
-        if cfg.experiment.wandb_logging:
-            wandb.init( project="SVN_Ensembles", 
-                        tags=active_tags,
-                        entity="klemens-floege",
-                        group=wandb_group
-                    )
-
-            # Setting the configuration in WandB
-            if cfg.experiment.method == 'SVN': 
-                wandb.config.update({
-                    "learning_rate": cfg.experiment.lr,
-                    "num_epochs": cfg.experiment.num_epochs,
-                    "batch_size": cfg.experiment.batch_size,
-                    "early_stopping": cfg.experiment.early_stopping,
-                    "dataset": cfg.task.dataset,
-                    "method": cfg.experiment.method,
-                    "task_type": cfg.task.task_type,
-                    "n_splits": cfg.experiment.n_splits, 
-                    "hessian_calc": cfg.SVN.hessian_calc,
-                    "use_curvature_kernel": cfg.SVN.use_curvature_kernel
-                })
-            else: 
-                wandb.config.update({
-                    "learning_rate": cfg.experiment.lr,
-                    "num_epochs": cfg.experiment.num_epochs,
-                    "batch_size": cfg.experiment.batch_size,
-                    "early_stopping": cfg.experiment.early_stopping,
-                    "dataset": cfg.task.dataset,
-                    "method": cfg.experiment.method,
-                    "task_type": cfg.task.task_type,
-                    "n_splits": cfg.experiment.n_splits
-                })
+         # Setting the configuration in WandB
+        if cfg.experiment.method == 'SVN': 
+            wandb.config.update({
+                "learning_rate": cfg.experiment.lr,
+                "num_epochs": cfg.experiment.num_epochs,
+                "batch_size": cfg.experiment.batch_size,
+                "early_stopping": cfg.experiment.early_stopping,
+                "dataset": cfg.task.dataset,
+                "method": cfg.experiment.method,
+                "task_type": cfg.task.task_type,
+                "n_splits": cfg.experiment.n_splits, 
+                "hessian_calc": cfg.SVN.hessian_calc,
+                "use_curvature_kernel": cfg.SVN.use_curvature_kernel
+            })
+        else: 
+            wandb.config.update({
+                "learning_rate": cfg.experiment.lr,
+                "num_epochs": cfg.experiment.num_epochs,
+                "batch_size": cfg.experiment.batch_size,
+                "early_stopping": cfg.experiment.early_stopping,
+                "dataset": cfg.task.dataset,
+                "method": cfg.experiment.method,
+                "task_type": cfg.task.task_type,
+                "n_splits": cfg.experiment.n_splits
+            })
         
         # Split data into training and validation for this fold
         x_train_fold, x_test_fold = x_combined[train_idx], x_combined[test_idx]
@@ -166,7 +164,9 @@ def run_experiment(cfg):
         else: 
             scaler = StandardScaler()
             x_train_fold = scaler.fit_transform(x_train_fold)
+            print(x_train_fold.mean())
             x_test_fold = scaler.transform(x_test_fold)
+            print(x_test_fold.mean())
             input_dim = x_train.shape[1]  # Number of features in x_train
             modellist = initialise_mlp_models(input_dim, output_dim, cfg)
 
@@ -196,30 +196,28 @@ def run_experiment(cfg):
         
         if cfg.task.task_type == 'regression':
             test_MSE, test_rmse, test_nll = regression_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
-            print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
+            print(f"Test MSE: {test_MSE:.4f}, Test RMSE: {test_rmse:.4f}, Test  NLL: {test_nll}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
             # Log regression test metrics
-            if cfg.experiment.wandb_logging:
-                wandb.run.summary.update({
-                    "test_MSE": test_MSE,
-                    "test_RMSE": test_rmse,
-                    "test_NLL": test_nll,
-                    "average_train_time_per_epoch": avg_train_time_per_epoch
-                })
+            wandb.run.summary.update({
+                "test_MSE": test_MSE,
+                "test_RMSE": test_rmse,
+                "test_NLL": test_nll,
+                "average_train_time_per_epoch": avg_train_time_per_epoch
+            })
         elif cfg.task.task_type == 'classification':
             test_accuracy, test_cross_entropy, test_entropy, test_nll, test_ece, test_brier, test_AUROC = classification_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
             print(f"Test Acc: {test_accuracy:.4f}, Test CrossEntropy: {test_cross_entropy:.4f}, Test Entropy: {test_entropy:.4f}, Test NLL: {test_nll:.4f}, Test ECE: {test_ece:.4f}, Test Brier: {test_brier:.4f}, Test AUROC: {test_AUROC:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
             # Log classification test metrics
-            if cfg.experiment.wandb_logging:
-                wandb.run.summary.update({
-                    "test_accuracy": test_accuracy,
-                    "test_cross_entropy": test_cross_entropy,
-                    "test_entropy": test_entropy,
-                    "test_NLL": test_nll,
-                    "test_ECE": test_ece,
-                    "test_Brier": test_brier,
-                    "test_AUROC": test_AUROC,
-                    "average_train_time_per_epoch": avg_train_time_per_epoch
-                })
+            wandb.run.summary.update({
+                "test_accuracy": test_accuracy,
+                "test_cross_entropy": test_cross_entropy,
+                "test_entropy": test_entropy,
+                "test_NLL": test_nll,
+                "test_ECE": test_ece,
+                "test_Brier": test_brier,
+                "test_AUROC": test_AUROC,
+                "average_train_time_per_epoch": avg_train_time_per_epoch
+            })
          
         
 
@@ -287,8 +285,10 @@ def run_experiment(cfg):
         
             plot_modellist(modellist, x_train_split, y_train_split, x_test, y_test, full_save_path)
 
-        if cfg.experiment.wandb_logging:
-            wandb.finish()
+        wandb.finish()
+
+
+
         
 
 

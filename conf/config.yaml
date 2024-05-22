@@ -8,12 +8,6 @@ experiment:
   n_splits: 5
   n_samples: 400
 
-  grad_clip: False
-  grad_clip_max_norm: 0.1
-
-  wandb_group: 'Plots'
-  wandb_logging: True
-
   num_epochs: 50
   batch_size: 16 
   lr: 0.01
@@ -22,45 +16,36 @@ experiment:
 
   early_stopping: False
 
-  wandb_group: 'NeurIPS'
-
   save_model: False
-  base_save_path: '/Users/klemens.floege/Desktop/Dev/laplace_SVN/model_checkpoints/'
-
+  base_save_path: '/Users/muhammadabdulmoeed/Documents/TUM/Guided Research/'
+  
   shuffle: True
   train_val_split: 0.20
 
   plot_save_path: "images/regression_plot"
 
-  hidden_layers: [50, 50]
+  hidden_layers: [50,50]
 
-  method: "SVN" # "SVN", "SVGD", "Ensemble" 
+  method: "SVGD" # "WGD" "SVN", "SVGD", "Ensemble" 
   n_particles: 5
+
+  grad_clip: False
+  grad_clip_max_norm: 0.1
   
+  ann_sched_type: 'linear' # 'cosine', 'hyper', 'cyclic'
+  ann_sched_gamma: 0.01
+  ann_steps: 0
+  wandb_group: "abc"
 
-
-Checkpointing:
-  load_pretrained: True
-  model_path: False
-  last_layer_only: True
-
-Checkpointing:
-  load_pretrained: True
-  model_path: False
-
-Checkpointing:
-  load_pretrained: True
-  model_path: False
+WGD:
+  beta: 0.01
+   
 
 SVN: 
   red_dist_std: 0.1
   hessian_calc_batch_size: 2
   use_curvature_kernel: "use_curvature"
 
-  classification_likelihood: True
-
   hessian_calc: "Full" # "Full", "Diag", "Kron", "LowRank"
   solve_method: "CG" # "Cholesky"
   block_diag_approx: False
-  
-  ll: False
