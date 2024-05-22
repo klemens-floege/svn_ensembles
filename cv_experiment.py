@@ -77,8 +77,6 @@ def run_experiment(cfg):
         x_train, y_train, x_test, y_test = load_mnist_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     elif cfg.task.dataset =="fashionmnist":
         x_train, y_train, x_test, y_test = load_fashionmnist_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="cifar10":
-        x_train, y_train, x_test, y_test = load_cifar10_data(config=cfg)
     else: 
         print('The configured dataset is not yet implemented')
         ValueError("The configured dataset is not yet implemented")
@@ -93,7 +91,7 @@ def run_experiment(cfg):
     
     x_combined = np.concatenate((x_train, x_test), axis=0)
     y_combined = np.concatenate((y_train, y_test), axis=0)
-
+ 
 
     if cfg.task.task_type == 'regression':
         n_metrics = 3 # metrics to track across folds
@@ -118,9 +116,9 @@ def run_experiment(cfg):
         wandb_group = cfg.experiment.wandb_group
 
         if cfg.experiment.wandb_logging:
-            wandb.init( project="SVN_Ensembles", 
+            wandb.init( project="your-project", 
                         tags=active_tags,
-                        entity="klemens-floege",
+                        entity="your-entity",
                         group=wandb_group
                     )
 

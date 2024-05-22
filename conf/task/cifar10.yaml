@@ -1,8 +1,0 @@
-
-dataset: "cifar10"
-
-dim_problem: 10 # num classes
-image_dim: 32
-file_path: "/home/hgf_hmgu/hgf_tfv0045/svn_ensembles/data/cifar-10/" #give data directory for the pickle _batch files
-task_type: 'classification'
-n_samples: True #if put in an number will limit the number of sample, True: 60000

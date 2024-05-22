@@ -26,8 +26,6 @@ def apply_SVN(modellist, parameters,
 
     loss, log_prob = calc_loss(modellist, batch, train_dataloader, cfg, device)
 
-    #print("loss: ", loss.shape)
-    #print("loss sum", loss.sum())
 
     score_func = autograd.grad(log_prob.sum(), parameters)
     score_tensors = [t.view(-1) for t in score_func]  # Flatten
@@ -61,12 +59,6 @@ def apply_SVN(modellist, parameters,
         if targets.dtype != torch.long:
             targets = targets.long()
 
-    #print(targets.shape)
-    '''targets = targets.squeeze(1)
-    if inputs_squeezed.dtype != torch.float:
-        inputs_squeezed = inputs_squeezed.float()
-    if targets.dtype != torch.long:
-        targets = targets.long()'''
 
     hessian_particle_loader = data_utils.DataLoader(
         data_utils.TensorDataset(inputs_squeezed, targets), 
@@ -88,8 +80,8 @@ def apply_SVN(modellist, parameters,
                 laplace_particle_model = FullLaplace(modellist[i], 
                                                  likelihood='regression')
             
-                laplace_particle_model.fit(hessian_particle_loader)
-                Hessian = laplace_particle_model.posterior_precision
+            laplace_particle_model.fit(hessian_particle_loader)
+            Hessian = laplace_particle_model.posterior_precision
             hessians_list.append(Hessian)
             
         elif cfg.SVN.hessian_calc == "Diag":  
@@ -104,12 +96,10 @@ def apply_SVN(modellist, parameters,
             diag_hessian_list.append(Hessian)
 
         elif cfg.SVN.hessian_calc == "Kron":  
-            #backend = AsdlGGN if args.approx_type == 'ggn' else AsdlEF
-            #TODO: double check AsdL
+            
+            #Performs last layer Kronecker Approximation
             if cfg.SVN.ll:
                 laplace_particle_model = Laplace(modellist[i], 'regression')
-                        #subset_of_weights='last_layer',
-                        #hessian_structure='Full'
                             
                 laplace_particle_model.fit(hessian_particle_loader)
             else:
@@ -135,9 +125,12 @@ def apply_SVN(modellist, parameters,
     
 
     #compute curvature matrix
-    #TODO: implement kernel M for KFAC, Diag, 
     if cfg.SVN.use_curvature_kernel == "use_curvature":
-        M = torch.mean(hessians_tensor, axis=0)
+        if cfg.SVN.hessian_calc in ['Full', 'Diag']:
+            M = torch.mean(hessians_tensor, axis=0)
+        else: 
+            print('This Hessian approximation is not configured forthe curvature kernel')
+            raise ValueError('This Hessian approximation is not configured forthe curvature kernel')
     else:
         M=None
 
@@ -223,28 +216,10 @@ def apply_SVN(modellist, parameters,
             alphas = torch.stack(alpha_list, dim=0).view(n_particles, -1)
             alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
             v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
-        else:
-            H1 = torch.einsum("xy, xz, xb -> yzb", K_XX, K_XX, hessians_tensor) #(n_particles, n_particles, n_parametes_per_model)
-            H2 = torch.einsum('xzi,xzj -> zij', grad_K, grad_K) #(n_particles, n_parametes_per_model, n_parametes_per_model)
+        else: 
+            print('Full SVN Hessian not configured for Diagonal Approximation')
+            raise ValueError('Full SVN Hessian not configured for Diagonal Approximation')
             
-            #adds H2 values to diagonal of H1
-            print(H1.shape)
-            print(H2.shape)
-            # Ensure H1 and H2 shapes are consistent for matmul
-            H1_diag = H1[range(n_particles), range(n_particles)]  # Shape [n_particles, n_parameters_per_model]
-            print("H1_diag shape:", H1_diag.shape)
-            # Perform the matmul operation
-            result = torch.matmul(H1_diag, H2)  # Shape [n_particles, n_parameters_per_model]
-            print("Result shape:", result.shape)
-            #H1[range(n_particles), range(n_particles)] = torch.matmul(H1[range(n_particles), range(n_particles)], H2)
-            H1[range(n_particles), range(n_particles)] = result
-            print("Updated H1 shape:", H1.shape)
-
-
-            N, _, D, _ = H1.shape  # Extract N and D from the shape of H
-            H_reshaped = H1.permute(0, 2, 1, 3).reshape(N*D, N*D)  # Reshape to [N*D, N*D] ,  #(n_particles*n_parametes_per_model, n_particles*n_parametes_per_model)
-            H =  H_reshaped / n_particles
-            H_op = H.detach().cpu().numpy()
 
     elif cfg.SVN.hessian_calc == "Kron":          
         # Create a linear operator that represents your Hessian vector product: Hx
@@ -301,10 +276,8 @@ def apply_SVN(modellist, parameters,
                 H_op = scipy.sparse.linalg.LinearOperator((N*D, N*D), matvec=lambda x: hessian_matvec(x, K_XX, kron_list, H2, n_parameters, device))
 
 
-    solve_method = 'CG'
-    # solve_method = 'Cholesky'
-
-    if solve_method == 'CG' and not cfg.SVN.block_diag_approx:
+    
+    if cfg.SVN.solve_method == 'CG' and not cfg.SVN.block_diag_approx:
         
         cg_maxiter = 50        
 
@@ -329,11 +302,6 @@ def apply_SVN(modellist, parameters,
             alphas_reshaped = alphas.view(n_particles, -1) #(n_particles, n_parameters)
             v_svn = torch.einsum('xd, xn -> nd', alphas_reshaped, K_XX) #(n_particles, n_parameters)
 
-    elif solve_method == 'Cholesky':
-        lamb = 0.01
-        H = H1 + NK * lamb
-        UH = scipy.linalg.cholesky(H)
-        v_svn = self._getSVN_direction(kx, v_svgd, UH)
     
     else: 
         ValueError("This equations system solver is not implemented")

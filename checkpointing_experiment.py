@@ -65,42 +65,11 @@ def run_checkpointing_experiment(cfg):
 
     print(cfg.task.dataset)
 
-    if cfg.task.dataset == "sine":
-        x_train, y_train, x_test, y_test = get_sine_data(n_samples=cfg.experiment.n_samples, seed= cfg.experiment.seed)
-    elif cfg.task.dataset == "gap":
-        x_train, y_train, x_test, y_test = get_gap_data(n_samples=cfg.experiment.n_samples, seed= cfg.experiment.seed)
-    elif cfg.task.dataset == "yacht":
-        x_train, y_train, x_test, y_test = load_yacht_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset == "energy":
-        x_train, y_train, x_test, y_test = load_energy_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset == "autompg":
-        x_train, y_train, x_test, y_test = load_autompg_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="concrete":
-        x_train, y_train, x_test, y_test = load_concrete_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="kin8nm":
-        x_train, y_train, x_test, y_test = load_kin8nm_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="naval":
-        x_train, y_train, x_test, y_test = load_naval_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="protein":
-        x_train, y_train, x_test, y_test = load_protein_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="power":
-        x_train, y_train, x_test, y_test = load_power_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="parkinsons":
-        x_train, y_train, x_test, y_test = load_parkinson_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="breast":
-        x_train, y_train, x_test, y_test = load_breast_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="heart":
-        x_train, y_train, x_test, y_test = load_heart_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="ionosphere":
-        x_train, y_train, x_test, y_test = load_ionosphere_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="australian":
-        x_train, y_train, x_test, y_test = load_australian_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="mnist":
+
+    if cfg.task.dataset =="mnist":
         x_train, y_train, x_test, y_test = load_mnist_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
     elif cfg.task.dataset =="fashionmnist":
         x_train, y_train, x_test, y_test = load_fashionmnist_data(test_size_split=cfg.experiment.train_val_split, seed=cfg.experiment.seed, config=cfg)
-    elif cfg.task.dataset =="cifar10":
-        x_train, y_train, x_test, y_test = load_cifar10_data(config=cfg)
     else: 
         print('The configured dataset is not yet implemented')
         ValueError("The configured dataset is not yet implemented")
@@ -115,11 +84,11 @@ def run_checkpointing_experiment(cfg):
         active_tags = [method, task]
             
     wandb_group = cfg.experiment.wandb_group
-    wandb.init( project="SVN_Ensembles", 
-                tags=active_tags,
-                entity="klemens-floege",
-                group=wandb_group
-            )
+    wandb.init( project="your-project", 
+                        tags=active_tags,
+                        entity="your-entity",
+                        group=wandb_group
+                )
      # Setting the configuration in WandB
     if cfg.experiment.method == 'SVN': 
         wandb.config.update({
@@ -151,8 +120,6 @@ def run_checkpointing_experiment(cfg):
     if cfg.task.dataset in ['mnist', 'fashionmnist']:
         image_dim = cfg.task.image_dim
         raw_modellist = initialise_lenet_models(image_dim, output_dim, cfg)
-    elif cfg.task.dataset in ['cifar10']:
-        raw_modellist = initialise_resnet32_modellist(depth =34, widen_factor=1 , config=cfg)
     else: 
         print('Checkpoiting only for Image dataset')
         ValueError("Checkpoiting only for Image dataset")
@@ -161,7 +128,7 @@ def run_checkpointing_experiment(cfg):
     modellist = []  # This should be your logic to load models
     # Initialize or load model list based on config
     if cfg.Checkpointing.load_pretrained:
-        print('start laoding')
+        print('start loading')
         fold = 0
         #model_path = 'mnist/Ensemble/batch16_ep4_lr0.03/2024-05-11_22-03-39'
         #model_path = 'mnist/Ensemble/batch16_ep4_lr0.03/2024-05-11_22-03-39/checkpoint_1.pt'
@@ -209,13 +176,28 @@ def run_checkpointing_experiment(cfg):
     print(f'Model {i}: Trainable parameters = {trainable_params}')
 
 
+    n_splits = cfg.experiment.n_splits  # Number of folds for k-fold CV
+    kf = KFold(n_splits=n_splits, shuffle=True, random_state=cfg.experiment.seed)
+    x_combined = np.concatenate((x_train, x_test), axis=0)
+    y_combined = np.concatenate((y_train, y_test), axis=0)
+
+    
+    #retrieve the correct data appropriate for the fold 
+    for fold, (train_idx, test_idx) in enumerate(kf.split(x_combined)):
+
+        if fold == cfg.Checkpointing.fold:
+            x_train_fold, x_test_fold = x_combined[train_idx], x_combined[test_idx]
+            y_train_fold, y_test_fold = y_combined[train_idx], y_combined[test_idx]
+
+
     # Split the data into training and evaluation sets
-    x_train_split, x_eval_split, y_train_split, y_eval_split = train_test_split(x_train, y_train, test_size=cfg.experiment.train_val_split, random_state=cfg.experiment.seed)
+    x_train_split, x_eval_split, y_train_split, y_eval_split = train_test_split(x_train_fold, y_train_fold, test_size=cfg.experiment.train_val_split, random_state=cfg.experiment.seed)
+
     
     # Create instances of the SineDataset for each set
     train_dataset = Dataset(x_train_split, y_train_split)
     eval_dataset = Dataset(x_eval_split, y_eval_split)
-    test_dataset = Dataset(x_test, y_test)
+    test_dataset = Dataset(x_test_fold, y_test_fold)
     
     print("length train", len(train_dataset))
     print("length eval", len(eval_dataset))
@@ -257,21 +239,13 @@ def run_checkpointing_experiment(cfg):
 
      # Save model checkpoint if required
     if cfg.experiment.save_model:
-        #modellist_path = '/Users/klemens.floege/Desktop/dev/laplace_SVN/model_checkpoints/mnist/Ensemble/batch16_ep4_lr0.03/2024-05-11_22-03-39'
         
-        #modellist_path = os.path.join(base_save_path, model_path)
+
         print('Saving the model')
         
-        #modellist_path = increment_checkpoint_path(checkpoint_path)
-        #base_dir, cpt_string = increment_checkpoint_path(checkpoint_path)
         save_path = increment_checkpoint_path(checkpoint_path)
         print(save_path)
-        #print(base_dir)
- 
-        #if not os.path.exists(modellist_path):
-        #    os.makedirs(modellist_path)
         
-        #save_path = os.path.join(base_dir, cpt_string)
 
         
         combined_state_dict = {f'model_{i}': model.state_dict() for i, model in enumerate(modellist)}

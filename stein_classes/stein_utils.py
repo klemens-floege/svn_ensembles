@@ -160,7 +160,7 @@ def hessian_matvec(input, K_XX, kron_list, H2, n_parameters, device):
                     result[n_parameters*y: n_parameters*(y+1)] += torch.matmul(H2[y], current_parameter_vector)  
 
 
-        return result.detach().numpy()
+        return result.detach().cpu().numpy()
 
  
 
@@ -198,7 +198,8 @@ def diag_hessian_matvec_block(input, squared_kernel, grad_K_i, diag_hessian, dev
         diag_hessian = diag_hessian.clone().detach().float().to(device)
 
         #kernel_grads_vector = torch.sum(grad_K_i.T * grad_K_i, dim=1)  # Element-wise multiplication and sum along rows
-        kernel_grads_vector = torch.matmul(torch.matmul(grad_K_i.T, grad_K_i), input)
+        temp = torch.matmul(grad_K_i.T, grad_K_i)
+        kernel_grads_vector = torch.matmul(temp, input)
 
         #kernel_grads_vector = torch.matmul(kernels_grads, input)
         kernel_weght_param_vector = squared_kernel * input
@@ -208,3 +209,6 @@ def diag_hessian_matvec_block(input, squared_kernel, grad_K_i, diag_hessian, dev
 
 
         return update.detach().cpu().numpy()
+
+        
+    

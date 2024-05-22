@@ -33,15 +33,12 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
   n_parameters_per_model = sum(p.numel() for p in modellist[0].parameters() if p.requires_grad)
   print('number of parameters per model', n_parameters_per_model)
 
-  #print(parameters)
+  
 
   #print(type(W)
   optimizer = AdamW(params=parameters, lr=lr)
 
-  #for param_group in optimizer.param_groups:
-  #  for param in param_group['params']:
-  #      print(param)  # This prints the parameter tensor directly
-  #      print(param.data)  # This prints the data of the parameter tensor
+  
 
   #Early Stopping and loading best eval loss model
   best_mse = float('inf')
