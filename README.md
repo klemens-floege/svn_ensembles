@@ -29,6 +29,9 @@ The SVN method incorporates various Hessian approximations, each supporting mult
 - **Normal Kernel**
 - **Anisotropic Curvature Kernel**
 
+## Note on Datasets
+We refrained from uploading the MNIST and FashionMNIST datasets due to the file limit. However, just loading from the -ubyte files from the corresponding websites and then creating a .xlsx file will run smoothly in our pipeline.
+
 ## Running Experiments
 We are using Hydra configs for configuration management. Please refer to the `config.yaml` file for further details. In order to call the LL-SVN algorithm simply set SVN.ll=True. 
 
@@ -36,6 +39,6 @@ We are using Hydra configs for configuration management. Please refer to the `co
 To run the 'Yacht' dataset using the SVN Ensembles algorithm with the Block Diagonal approximation and using the curvature Kernel, use the following command:
 
 ```bash
-python main.py task='parkinsons' experiment.num_epochs=1 experiment.wandb_logging=False experiment.method='SVN' SVN.hessian_calc='Diag' SVN.block_diag_approx=True
+python main.py task='parkinsons' experiment.num_epochs=1 experiment.wandb_logging=False experiment.method='SVN' SVN.hessian_calc='Diag' SVN.block_diag_approx=True SVN.use_curvature_kernel="use_curvature"
 
 

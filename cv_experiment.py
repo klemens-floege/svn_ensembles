@@ -96,7 +96,7 @@ def run_experiment(cfg):
     if cfg.task.task_type == 'regression':
         n_metrics = 3 # metrics to track across folds
     elif cfg.task.task_type == 'classification':
-        n_metrics = 7 # metrics to track across folds
+        n_metrics = 6 # metrics to track across folds
 
     metrics_array = np.zeros((n_splits, n_metrics)) # Store metrics from each fold
     model_path = generate_model_path(cfg)
@@ -204,13 +204,12 @@ def run_experiment(cfg):
                     "average_train_time_per_epoch": avg_train_time_per_epoch
                 })
         elif cfg.task.task_type == 'classification':
-            test_accuracy, test_cross_entropy, test_entropy, test_nll, test_ece, test_brier, test_AUROC = classification_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
-            print(f"Test Acc: {test_accuracy:.4f}, Test CrossEntropy: {test_cross_entropy:.4f}, Test Entropy: {test_entropy:.4f}, Test NLL: {test_nll:.4f}, Test ECE: {test_ece:.4f}, Test Brier: {test_brier:.4f}, Test AUROC: {test_AUROC:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
+            test_accuracy, test_nll, test_entropy, test_ece, test_brier, test_AUROC = classification_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
+            print(f"Test Acc: {test_accuracy:.4f}, Test NLL: {test_nll:.4f}, Test Entropy: {test_entropy:.4f},  Test ECE: {test_ece:.4f}, Test Brier: {test_brier:.4f}, Test AUROC: {test_AUROC:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
             # Log classification test metrics
             if cfg.experiment.wandb_logging:
                 wandb.run.summary.update({
                     "test_accuracy": test_accuracy,
-                    "test_cross_entropy": test_cross_entropy,
                     "test_entropy": test_entropy,
                     "test_NLL": test_nll,
                     "test_ECE": test_ece,
@@ -236,8 +235,6 @@ def run_experiment(cfg):
         elif cfg.task.task_type == 'classification':
             if isinstance(test_accuracy, torch.Tensor):
                 test_accuracy = test_accuracy.cpu()
-            if isinstance(test_cross_entropy, torch.Tensor):
-                test_cross_entropy = test_cross_entropy.cpu()
             if isinstance(test_nll, torch.Tensor):
                 test_nll = test_nll.cpu()
             if isinstance(test_ece, torch.Tensor):
@@ -246,7 +243,7 @@ def run_experiment(cfg):
                 test_brier = test_brier.cpu()
             if isinstance(test_AUROC, torch.Tensor):
                 test_AUROC = test_AUROC.cpu()
-            metrics_array[fold] = [test_accuracy,test_cross_entropy,  test_nll, test_ece, test_brier,test_AUROC, avg_train_time_per_epoch]
+            metrics_array[fold] = [test_accuracy, test_nll, test_ece, test_brier,test_AUROC, avg_train_time_per_epoch]
         
 
         # Save model checkpoint if required
@@ -306,7 +303,7 @@ def run_experiment(cfg):
     if cfg.task.task_type == 'regression':
         print(f"Average Test MSE: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Average Test NLL: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f},  Avg Time / Epoch: {metrics_mean[2]:.2f} ± {metrics_std[2]:.2f}")
     elif cfg.task.task_type == 'classification':
-        print(f"Avg Test Accuracy: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Avg Test CrossEntr: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f}, Avg NLL: {metrics_mean[2]:.2f} ± {metrics_std[2]:.2f}, Avg Test ECE: {metrics_mean[3]:.2f} ± {metrics_std[3]:.2f}, Avg Test Brier: {metrics_mean[4]:.2f} ± {metrics_std[4]:.2f},  Avg AUROC: {metrics_mean[5]:.2f} ± {metrics_std[5]:.2f}, Avg Time / Epoch: {metrics_mean[6]:.2f} ± {metrics_std[6]:.2f}")
+        print(f"Avg Test Accuracy: {metrics_mean[0]:.2f} ± {metrics_std[0]:.2f}, Avg NLL: {metrics_mean[1]:.2f} ± {metrics_std[1]:.2f}, Avg Test ECE: {metrics_mean[2]:.2f} ± {metrics_std[2]:.2f}, Avg Test Brier: {metrics_mean[3]:.2f} ± {metrics_std[3]:.2f},  Avg AUROC: {metrics_mean[4]:.2f} ± {metrics_std[4]:.2f}, Avg Time / Epoch: {metrics_mean[5]:.2f} ± {metrics_std[5]:.2f}")
 
 
     

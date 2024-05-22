@@ -223,12 +223,11 @@ def run_checkpointing_experiment(cfg):
                 "average_train_time_per_epoch": avg_train_time_per_epoch
             })
     elif cfg.task.task_type == 'classification':
-        test_accuracy, test_cross_entropy, test_entropy, test_nll, test_ece, test_brier, test_AUROC = classification_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
-        print(f"Test Acc: {test_accuracy:.4f}, Test CrossEntropy: {test_cross_entropy:.4f}, Test Entropy: {test_entropy:.4f}, Test NLL: {test_nll:.4f}, Test ECE: {test_ece:.4f}, Test Brier: {test_brier:.4f}, Test AUROC: {test_AUROC:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
+        test_accuracy, test_nll, test_entropy, test_ece, test_brier, test_AUROC = classification_evaluate_modellist(modellist, dataloader=test_dataloader, device=device, config=cfg)
+        print(f"Test Acc: {test_accuracy:.4f},  Test NLL: {test_nll:.4f}, Test Entropy: {test_entropy:.4f}, Test ECE: {test_ece:.4f}, Test Brier: {test_brier:.4f}, Test AUROC: {test_AUROC:.4f}, Avg Time / Epoch: {avg_train_time_per_epoch:.4f} ")
         # Log classification test metrics
         wandb.run.summary.update({
             "test_accuracy": test_accuracy,
-            "test_cross_entropy": test_cross_entropy,
             "test_entropy": test_entropy,
             "test_NLL": test_nll,
             "test_ECE": test_ece,

@@ -9,7 +9,7 @@ wandb/
 .DS_Store
 
 # Python files
-__pycache__/
+#__pycache__/
 *.py[cod]
 *$py.class
 *-311.pyc
@@ -36,6 +36,3 @@ test_batch*
 *.json
 *.log 
 *.wandb
-
-
-*cifar10.yaml

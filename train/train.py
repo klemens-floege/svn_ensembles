@@ -10,9 +10,13 @@ from torch.optim import AdamW
 from stein_classes.svn import apply_SVN
 from stein_classes.svgd import apply_SVGD
 from stein_classes.ensemble import apply_Ensemble
+from stein_classes.wgd import apply_WGD
+from stein_classes.wgd_utils import create_ann
 
 from utils.kernel import RBF
 from utils.eval import regression_evaluate_modellist, classification_evaluate_modellist
+
+
 
 
 
@@ -80,6 +84,10 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
         loss = apply_SVGD(modellist, parameters, batch, train_dataloader, K, device, cfg)
       elif cfg.experiment.method == "Ensemble":
         loss = apply_Ensemble(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer)
+      elif cfg.experiment.method == "WGD":
+         # annealing scheduler only tested for WGD
+        ann_sch = create_ann(cfg)
+        loss = apply_WGD(modellist, parameters, batch, train_dataloader, K, device, cfg, epoch, ann_sch)
       else:
           print('Approximate Bayesian Inference method not implemented ')
           ValueError("Approximate Bayesian Inference method not implemented ")
@@ -107,13 +115,13 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
         wandb.log(metrics_to_log)
       global_step += 1  # Increment to differentiate from batch logging
     elif cfg.task.task_type == 'classification':
-      eval_accuracy, eval_cross_entropy, eval_entropy, eval_NLL, eval_ECE, eval_Brier, eval_AUROC = classification_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
-      best_metric_tracker = eval_cross_entropy
-      print(f"Epoch {epoch}: Acc: {eval_accuracy:.4f}, CrossEntr: {eval_cross_entropy:.4f}, Enrtr: {eval_entropy:.4f}, NLL: {eval_NLL:.4f}, ECE: {eval_ECE:.4f}, Brier: {eval_Brier:.4f}, AUROC: {eval_AUROC:.4f}")
+      eval_accuracy, eval_NLL, eval_entropy, eval_ECE, eval_Brier, eval_AUROC = classification_evaluate_modellist(modellist, dataloader=eval_dataloader, device=device, config=cfg)
+      best_metric_tracker = eval_NLL
+      print(f"Epoch {epoch}: Acc: {eval_accuracy:.4f}, NLL: {eval_NLL:.4f}, Enrtr: {eval_entropy:.4f},  ECE: {eval_ECE:.4f}, Brier: {eval_Brier:.4f}, AUROC: {eval_AUROC:.4f}")
 
       # Log evaluation metrics after each epoch
       metrics_to_log = {
-            "epoch": epoch, "eval_accuracy": eval_accuracy, "eval_cross_entropy": eval_cross_entropy,
+            "epoch": epoch, "eval_accuracy": eval_accuracy,
             "eval_entropy": eval_entropy, "eval_NLL": eval_NLL, "eval_ECE": eval_ECE, "eval_Brier": eval_Brier,
             "eval_AUROC": eval_AUROC, "time_per_epoch": time.time() - start_time
       }

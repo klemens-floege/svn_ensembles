@@ -28,12 +28,21 @@ experiment:
   shuffle: True
   train_val_split: 0.20
 
-  plot_save_path: "images/regression_plot"
+  plot_save_path: "your-plot_save_path"
 
   hidden_layers: [50, 50]
 
-  method: "SVN" # "SVN", "SVGD", "Ensemble" 
+  method: "SVN" # "SVN", "SVGD", "Ensemble"  "WGD"
   n_particles: 5
+
+  #Annealing schedule used in WGD
+  ann_sched_type: 'linear' # 'cosine', 'hyper', 'cyclic'
+  ann_sched_gamma: 0.01
+  ann_steps: 0
+
+
+WGD:
+  beta: 0.01
   
 
 Checkpointing:

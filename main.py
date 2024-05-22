@@ -12,12 +12,7 @@ from cv_experiment import run_experiment
 def main(cfg: DictConfig):
     
     os.environ["WANDB_MODE"] = "offline"
-    #os.environ["WANDB_DIR"] = cfg.experiment.wandb_path
 
-    #config = ExperimentConfig(**exp_dict, save_folder = SAVE_FOLDER)
-    #config.experiment.save_path = ''
-
-    # Your code here using cfg for accessing configurations
     print("start")
     print(cfg)
     
