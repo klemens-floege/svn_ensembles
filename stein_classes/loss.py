@@ -78,8 +78,9 @@ def calc_loss(modellist, batch,
         #loss = torch.stack([F.nll_loss(p, targets.argmax(1)) for p in pred_reshaped])
         #loss = torch.stack([F.nll_loss(F.log_softmax(p), T.argmax(1)) for p in pred[1]])
 
-
-        loss = torch.stack([F.cross_entropy(pred_reshaped[i], targets.squeeze(1).long()) for i in range(pred_reshaped.size(0))])
+        targets = targets.squeeze(1)
+        loss = torch.stack([F.cross_entropy(pred_reshaped[i], targets.long()) for i in range(pred_reshaped.size(0))])
+        
         
 
     pred_dist_std = cfg.SVN.red_dist_std

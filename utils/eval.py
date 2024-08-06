@@ -56,7 +56,6 @@ def regression_evaluate_modellist(modellist, dataloader, device, config):
 
              # Variance as a proxy for uncertainty
             ensemble_variance = pred_reshaped.var(dim=0) + 1e-6  # Adding a small constant for numerical stability #[batch_size, dim_problem]
-
             
             loss = mse_loss(ensemble_pred, targets) #'mean' reduction is default
 

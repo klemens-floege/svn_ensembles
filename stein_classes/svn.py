@@ -15,7 +15,7 @@ import inspect
 
 
 def apply_SVN(modellist, parameters, 
-              batch, train_dataloader, kernel, device, cfg):
+              batch, train_dataloader, kernel, device, cfg, optimizer, step):
     
     inputs = batch[0].to(device)
     targets = batch[1].to(device)
@@ -93,15 +93,39 @@ def apply_SVN(modellist, parameters,
             hessians_list.append(Hessian)
             
         elif cfg.SVN.hessian_calc == "Diag":  
-            if cfg.SVN.classification_likelihood:
-                laplace_particle_model = DiagLaplace(modellist[i], 
-                                                 likelihood=cfg.task.task_type)
+
+            if cfg.SVN.use_adam_hessian and 1 < step:
+                second_moments = []
+                for state in optimizer.state.values():
+                    if 'exp_avg_sq' in state:
+                        second_moments.append(state['exp_avg_sq'])
+                
+                beta2 = optimizer.param_groups[0]['betas'][1]
+
+                t = step  # Assuming t = 1 for simplicity, update accordingly
+
+                # Calculate v_t
+                v_hat_list = [v_t * (1 - beta2 ** t) for v_t in second_moments]
+
+                # Flatten each v_t and concatenate into a single tensor
+                flattened_v_hat_list = [v_hat.flatten() for v_hat in v_hat_list]
+
+                result_tensor = torch.cat(flattened_v_hat_list)
+                hessians_tensor = result_tensor.view(n_particles, -1)
+
+            
             else:
-                laplace_particle_model = DiagLaplace(modellist[i], 
-                                                 likelihood='regression')
-            laplace_particle_model.fit(hessian_particle_loader)
-            Hessian = laplace_particle_model.posterior_precision
-            diag_hessian_list.append(Hessian)
+                if cfg.SVN.classification_likelihood:
+                    laplace_particle_model = DiagLaplace(modellist[i], 
+                                                    likelihood=cfg.task.task_type)
+                else:
+                    laplace_particle_model = DiagLaplace(modellist[i], 
+                                                    likelihood='regression')
+                laplace_particle_model.fit(hessian_particle_loader)
+                Hessian = laplace_particle_model.posterior_precision
+                diag_hessian_list.append(Hessian)
+            
+      
 
         elif cfg.SVN.hessian_calc == "Kron":  
             #backend = AsdlGGN if args.approx_type == 'ggn' else AsdlEF
@@ -129,8 +153,11 @@ def apply_SVN(modellist, parameters,
         hessians_tensor = hessians_tensor.reshape(n_particles, n_parameters, n_parameters) #(n_particles, n_parameters, n_parameters)
 
     if cfg.SVN.hessian_calc == "Diag":  
-        hessians_tensor = torch.cat(diag_hessian_list, dim=0)
-        hessians_tensor = hessians_tensor.reshape(n_particles, n_parameters) #(n_particles, n_parameters)
+        if cfg.SVN.use_adam_hessian and 1 < step:
+            hessians_tensor = hessians_tensor
+        else: 
+            hessians_tensor = torch.cat(diag_hessian_list, dim=0)
+            hessians_tensor = hessians_tensor.reshape(n_particles, n_parameters) #(n_particles, n_parameters)
 
     
 

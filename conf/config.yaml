@@ -11,8 +11,8 @@ experiment:
   grad_clip: False
   grad_clip_max_norm: 0.1
 
-  wandb_group: 'Plots'
-  wandb_logging: True
+  wandb_group: 'DebugMerg'
+  wandb_logging: False
 
   num_epochs: 50
   batch_size: 16 
@@ -22,7 +22,6 @@ experiment:
 
   early_stopping: False
 
-  wandb_group: 'NeurIPS'
 
   save_model: False
   base_save_path: '/Users/klemens.floege/Desktop/Dev/laplace_SVN/model_checkpoints/'
@@ -32,35 +31,49 @@ experiment:
 
   plot_save_path: "images/regression_plot"
 
-  hidden_layers: [50, 50]
+  hidden_layers: [50,50]
 
   method: "SVN" # "SVN", "SVGD", "Ensemble" 
-  n_particles: 5
+  n_particles: 2
   
 
 
 Checkpointing:
   load_pretrained: True
   model_path: False
-  last_layer_only: True
-
-Checkpointing:
-  load_pretrained: True
-  model_path: False
-
-Checkpointing:
-  load_pretrained: True
-  model_path: False
+  last_layer_only: False
 
 SVN: 
   red_dist_std: 0.1
   hessian_calc_batch_size: 2
   use_curvature_kernel: "use_curvature"
 
-  classification_likelihood: True
+  classification_likelihood: False
 
-  hessian_calc: "Full" # "Full", "Diag", "Kron", "LowRank"
+  hessian_calc: "Diag" # "Full", "Diag", "Kron", "LowRank"
   solve_method: "CG" # "Cholesky"
-  block_diag_approx: False
+  block_diag_approx: True
+
+  use_adam_hessian: False
+  use_ivon_hessian: True
   
   ll: False
+
+
+optimizer:
+  type: "IVON" # "SGD", "Adam", "IVON", "AdamW"
+  params:
+    lr: 0.0001
+    weight_decay: 1e-4 # Common parameter
+    # Add other optimizer-specific parameters here
+    momentum: 0.9  # For SGD
+    ess: 100     # For IVON
+    hess_init: 0.1 # For IVON
+    beta1: 0.9 # For IVON
+    beta2: 0.99999  # For IVON
+    mc_samples: 20    # For IVON
+    hess_approx: 'price' #'price',  'gradsq'   # For IVON
+    clip_radius: float("inf")    # For IVON
+    sync: False   # For IVON
+    debias: True   # For IVON
+    rescale_lr: True   # For IVON

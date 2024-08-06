@@ -197,7 +197,8 @@ def diag_hessian_matvec_block(input, squared_kernel, grad_K_i, diag_hessian, dev
         grad_K_i = grad_K_i.clone().detach().float().to(device)
         diag_hessian = diag_hessian.clone().detach().float().to(device)
 
-        #kernel_grads_vector = torch.sum(grad_K_i.T * grad_K_i, dim=1)  # Element-wise multiplication and sum along rows
+        #kernel_grads_vector = torch.sum(grad_K_i.T * grad_K_i, dim=1)  
+        # # Element-wise multiplication and sum along rows
         kernel_grads_vector = torch.matmul(torch.matmul(grad_K_i.T, grad_K_i), input)
 
         #kernel_grads_vector = torch.matmul(kernels_grads, input)

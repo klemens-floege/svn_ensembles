@@ -5,9 +5,11 @@ import wandb
 import tabulate
 
 from tqdm import tqdm
-from torch.optim import AdamW
+from torch.optim import AdamW, SGD, Adam
+import ivon
 
-from stein_classes.svn import apply_SVN
+#from stein_classes.svn import apply_SVN
+from SVN.apply_svn import apply_SVN
 from stein_classes.svgd import apply_SVGD
 from stein_classes.ensemble import apply_Ensemble
 
@@ -36,7 +38,22 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
   #print(parameters)
 
   #print(type(W)
-  optimizer = AdamW(params=parameters, lr=lr)
+  #optimizer = AdamW(params=parameters, lr=lr)
+
+  optimizer = None
+  optimizer_params = {k: v for k, v in cfg.optimizer.params.items() if k in ["lr", "weight_decay", "momentum", "ess"]}
+
+  if cfg.optimizer.type == "AdamW":
+      optimizer = AdamW(params=parameters, lr=optimizer_params["lr"], weight_decay=optimizer_params.get("weight_decay", 0))
+  elif cfg.optimizer.type == "SGD":
+      optimizer = SGD(params=parameters, lr=optimizer_params["lr"], momentum=optimizer_params.get("momentum", 0))
+  elif cfg.optimizer.type == "Adam":
+      optimizer = Adam(params=parameters, lr=optimizer_params["lr"], weight_decay=optimizer_params.get("weight_decay", 0))
+  elif cfg.optimizer.type == "IVON":
+      optimizer = ivon.IVON(params=parameters, lr=optimizer_params["lr"], ess=optimizer_params["ess"], weight_decay=optimizer_params.get("weight_decay", 0))
+  else:
+      raise ValueError(f"Unknown optimizer type: {cfg.optimizer.type}")
+
 
   #for param_group in optimizer.param_groups:
   #  for param in param_group['params']:
@@ -73,26 +90,43 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
         model.train()
 
 
-      optimizer.zero_grad()    
+      #optimizer.zero_grad()    
 
-      
-
-      if cfg.experiment.method == "SVN":
-        loss = apply_SVN(modellist, parameters, batch, train_dataloader, K, device, cfg)
-      elif cfg.experiment.method == "SVGD":
-        loss = apply_SVGD(modellist, parameters, batch, train_dataloader, K, device, cfg)
-      elif cfg.experiment.method == "Ensemble":
-        loss = apply_Ensemble(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer)
+      if cfg.optimizer.type == "IVON":
+        for _ in range(cfg.optimizer.params.get('train_samples', 1)):
+            with optimizer.sampled_params(train=True):
+                optimizer.zero_grad()
+                if cfg.experiment.method == "SVN":
+                  loss = apply_SVN(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer, step)
+                elif cfg.experiment.method == "SVGD":
+                  loss = apply_SVGD(modellist, parameters, batch, train_dataloader, K, device, cfg)
+                elif cfg.experiment.method == "Ensemble":
+                  loss = apply_Ensemble(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer)
+                else:
+                    print('Approximate Bayesian Inference method not implemented ')
+                    ValueError("Approximate Bayesian Inference method not implemented ")
+                    return
       else:
-          print('Approximate Bayesian Inference method not implemented ')
-          ValueError("Approximate Bayesian Inference method not implemented ")
-          return
+        optimizer.zero_grad()
+
+        if cfg.experiment.method == "SVN":
+          loss = apply_SVN(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer, step)
+        elif cfg.experiment.method == "SVGD":
+          loss = apply_SVGD(modellist, parameters, batch, train_dataloader, K, device, cfg)
+        elif cfg.experiment.method == "Ensemble":
+          loss = apply_Ensemble(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer)
+        else:
+            print('Approximate Bayesian Inference method not implemented ')
+            ValueError("Approximate Bayesian Inference method not implemented ")
+            return
             
       if cfg.experiment.wandb_logging:
         wandb.log({"loss": loss.mean().item()})  # Log loss at each batch step
       #global_step += 1  # Increment global step after logging
 
       optimizer.step()
+
+      
   
     best_metric_tracker = None
     time_diff = time.time() - start_time
