@@ -20,20 +20,19 @@ class DiagHessian(HessianApproximation):
         
         #return torch.ones((self.n_particles, self.n_parameters))
         #if self.cfg.SVN.use_adam_hessian and 1 < self.step:
-        if self.cfg.optimizer.type in ["Adam", "AdamW"]: 
+        if self.cfg.optimizer.type in ["Adam", "AdamW"] and self.cfg.SVN.use_adam_hessian: 
             if 1 < self.step:
                 return self.get_adam_hessians()
             else:
                 return torch.ones((self.n_particles, self.n_parameters))
         elif self.cfg.optimizer.type in ["IVON"]:
             return self.get_ivon_hessians()
-            if 1 < self.step:
-                return self.get_ivon_hessians()
-            else:
-                return torch.ones((self.n_particles, self.n_parameters))
         else: 
-            return self.get_laplace_lib_hessians()
-        
+            if 0 < self.step:
+                return self.last_hessian
+            else:
+                self.last_hessian = self.get_laplace_lib_hessians()
+                return self.get_laplace_lib_hessians()
             
         
 
@@ -158,13 +157,18 @@ class DiagHessian(HessianApproximation):
         v_hat_tensor = second_moments_tensor * (1 - beta2 ** t)
         
         #Hacky
-        #sqrt_v_hat_tensor = torch.sqrt(v_hat_tensor + 1e-10)  # Adding epsilon for numerical stability
+        #sqrt_v_hat_tensor = torch.sqrt(v_hat_tensor)  # Adding epsilon for numerical stability
         #hessians_tensor = self.cfg.experiment.batch_size * sqrt_v_hat_tensor.view(self.n_particles, -1)
 
         # Reshape to the correct dimensions
-        hessians_tensor = self.cfg.experiment.batch_size * v_hat_tensor.view(self.n_particles, -1)
+        sqrt_batch_size = torch.sqrt(torch.tensor(self.cfg.experiment.batch_size, dtype=torch.float32))
+
+        #hessians_tensor = (1/self.cfg.experiment.batch_size) * v_hat_tensor.view(self.n_particles, -1)
+        #hessians_tensor = (1/sqrt_batch_size) * v_hat_tensor.view(self.n_particles, -1)
+        hessians_tensor = sqrt_batch_size * v_hat_tensor.view(self.n_particles, -1)
         
         #print('hesisans: ', hessians_tensor[:5])
+        #print(hessians_tensor.shape)
         
         return hessians_tensor
 

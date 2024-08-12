@@ -4,6 +4,7 @@ outputs/
 myEnv/
 model_checkpoints/
 wandb/
+plots/
 
 # System files
 .DS_Store

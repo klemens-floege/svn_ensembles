@@ -3,20 +3,22 @@ import torch
 
 
 class HessianApproximation(ABC):
-    def __init__(self, model, hessian_particle_loader, cfg, device, optimizer, step):
+    def __init__(self, model,cfg, device, optimizer):
         self.modellist = model
-        self.cfg = cfg
-        self.hessian_particle_loader = hessian_particle_loader
+        self.cfg = cfg        
         self.device = device
         self.optimizer = optimizer
-        self.step = step
-
+        
 
         self.n_particles = len(self.modellist)
         self.n_parameters = sum(p.numel() for p in self.modellist[0].parameters() if p.requires_grad)
 
         self.cg_maxiter = 50
-
+        
+        #Running Variables
+        self.last_hessian=None
+        self.hessian_particle_loader = None
+        self.step = None
         #self.hessian_list = None
 
 

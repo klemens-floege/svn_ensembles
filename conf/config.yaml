@@ -14,7 +14,7 @@ experiment:
   wandb_group: 'DebugMerg'
   wandb_logging: False
 
-  num_epochs: 50
+  num_epochs: 120
   batch_size: 16 
   lr: 0.01
   kernel_width: 0.01
@@ -34,7 +34,7 @@ experiment:
   hidden_layers: [50,50]
 
   method: "SVN" # "SVN", "SVGD", "Ensemble" 
-  n_particles: 2
+  n_particles: 5
   
 
 
@@ -55,15 +55,15 @@ SVN:
   block_diag_approx: True
 
   use_adam_hessian: False
-  use_ivon_hessian: True
+  use_ivon_hessian: False
   
   ll: False
 
 
 optimizer:
-  type: "IVON" # "SGD", "Adam", "IVON", "AdamW"
+  type: "AdamW" # "SGD", "Adam", "IVON", "AdamW"
   params:
-    lr: 0.0001
+    lr: 0.01
     weight_decay: 1e-4 # Common parameter
     # Add other optimizer-specific parameters here
     momentum: 0.9  # For SGD

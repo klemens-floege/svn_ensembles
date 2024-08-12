@@ -1,24 +1,12 @@
 import torch
 import torch.autograd as autograd
 import torch.utils.data as data_utils
-import scipy
-import numpy as np
-from abc import ABC, abstractmethod
 
-
-from laplace import FullLaplace, KronLaplace, DiagLaplace, Laplace
 from stein_classes.loss import calc_loss
-from stein_classes.stein_utils import hessian_matvec, kfac_hessian_matvec_block, diag_hessian_matvec_block
-
-from SVN.full import FullHessian
-from SVN.diag import DiagHessian
-from SVN.kfac import KronHessian
 
 
 
-
-
-def apply_SVN(modellist, parameters, batch, train_dataloader, kernel, device, cfg, optimizer, step):
+def apply_SVN(modellist, parameters, batch, train_dataloader, kernel, device, cfg, optimizer, step, svn_calculator):
 
     inputs = batch[0].to(device)
     targets = batch[1].to(device)
@@ -60,16 +48,11 @@ def apply_SVN(modellist, parameters, batch, train_dataloader, kernel, device, cf
         batch_size=cfg.SVN.hessian_calc_batch_size
     )
 
-    hessian_approximations = {
-        "Full": FullHessian,
-        "Diag": DiagHessian,
-        "Kron": KronHessian
-    }
+    svn_calculator.hessian_particle_loader = hessian_particle_loader
+    svn_calculator.step = step
 
 
-    svn_calculator = hessian_approximations[cfg.SVN.hessian_calc](modellist, 
-                                                                  hessian_particle_loader, cfg, 
-                                                                  device, optimizer, step)
+    
     hessians = svn_calculator.compute_hessians()
 
     #Compute the Kernel and its derivative

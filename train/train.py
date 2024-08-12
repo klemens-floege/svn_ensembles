@@ -13,6 +13,10 @@ from SVN.apply_svn import apply_SVN
 from stein_classes.svgd import apply_SVGD
 from stein_classes.ensemble import apply_Ensemble
 
+from SVN.full import FullHessian
+from SVN.diag import DiagHessian
+from SVN.kfac import KronHessian
+
 from utils.kernel import RBF
 from utils.eval import regression_evaluate_modellist, classification_evaluate_modellist
 
@@ -27,7 +31,6 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
   columns = ["epc", "eval_accuracy", "eval_cross_entropy", "eval_entropy", "eval_NLL", "eval_ECE", "eval_Brier", "time"]
 
   
-  n_particles = len(modellist)
   K = RBF(cfg.experiment.kernel_width)
 
   parameters = [p for model in modellist for p in model.parameters() if p.requires_grad ]
@@ -35,10 +38,6 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
   n_parameters_per_model = sum(p.numel() for p in modellist[0].parameters() if p.requires_grad)
   print('number of parameters per model', n_parameters_per_model)
 
-  #print(parameters)
-
-  #print(type(W)
-  #optimizer = AdamW(params=parameters, lr=lr)
 
   optimizer = None
   optimizer_params = {k: v for k, v in cfg.optimizer.params.items() if k in ["lr", "weight_decay", "momentum", "ess"]}
@@ -55,11 +54,7 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
       raise ValueError(f"Unknown optimizer type: {cfg.optimizer.type}")
 
 
-  #for param_group in optimizer.param_groups:
-  #  for param in param_group['params']:
-  #      print(param)  # This prints the parameter tensor directly
-  #      print(param.data)  # This prints the data of the parameter tensor
-
+  
   #Early Stopping and loading best eval loss model
   best_mse = float('inf')
   best_epoch = -1  # To track the epoch number of the best MSE
@@ -71,6 +66,14 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
   logged_values = []
   
   global_step = 0  # Initialize a global step counter
+
+  if cfg.experiment.method == "SVN":
+    hessian_approximations = {
+          "Full": FullHessian,
+          "Diag": DiagHessian,
+          "Kron": KronHessian
+      }
+    svn_calculator = hessian_approximations[cfg.SVN.hessian_calc](modellist, cfg, device, optimizer)
   
 
   print('-------------------------'+'Start training'+'-------------------------')
@@ -97,7 +100,7 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
             with optimizer.sampled_params(train=True):
                 optimizer.zero_grad()
                 if cfg.experiment.method == "SVN":
-                  loss = apply_SVN(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer, step)
+                  loss = apply_SVN(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer, step, svn_calculator)
                 elif cfg.experiment.method == "SVGD":
                   loss = apply_SVGD(modellist, parameters, batch, train_dataloader, K, device, cfg)
                 elif cfg.experiment.method == "Ensemble":
@@ -110,7 +113,7 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
         optimizer.zero_grad()
 
         if cfg.experiment.method == "SVN":
-          loss = apply_SVN(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer, step)
+          loss = apply_SVN(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer, step, svn_calculator)
         elif cfg.experiment.method == "SVGD":
           loss = apply_SVGD(modellist, parameters, batch, train_dataloader, K, device, cfg)
         elif cfg.experiment.method == "Ensemble":
