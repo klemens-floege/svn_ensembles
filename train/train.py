@@ -49,7 +49,22 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
   elif cfg.optimizer.type == "Adam":
       optimizer = Adam(params=parameters, lr=optimizer_params["lr"], weight_decay=optimizer_params.get("weight_decay", 0))
   elif cfg.optimizer.type == "IVON":
-      optimizer = ivon.IVON(params=parameters, lr=optimizer_params["lr"], ess=optimizer_params["ess"], weight_decay=optimizer_params.get("weight_decay", 0))
+      #optimizer = ivon.IVON(params=parameters, lr=optimizer_params["lr"], ess=optimizer_params["ess"], weight_decay=optimizer_params.get("weight_decay", 0))
+      optimizer = ivon.IVON(
+        params=parameters,
+        lr=optimizer_params["lr"],
+        ess=optimizer_params["ess"],
+        weight_decay=optimizer_params.get("weight_decay", 0),
+        hess_init=optimizer_params.get("hess_init", 0.1),
+        beta1=optimizer_params.get("beta1", 0.9),
+        beta2=optimizer_params.get("beta2", 0.999),
+        mc_samples=optimizer_params.get("mc_samples", 20),
+        hess_approx=optimizer_params.get("hess_approx", 'price'),
+        clip_radius=optimizer_params.get("clip_radius", float("inf")),
+        sync=optimizer_params.get("sync", False),
+        debias=optimizer_params.get("debias", True),
+        rescale_lr=optimizer_params.get("rescale_lr", True)
+    )
   else:
       raise ValueError(f"Unknown optimizer type: {cfg.optimizer.type}")
 
@@ -101,6 +116,7 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
                 optimizer.zero_grad()
                 if cfg.experiment.method == "SVN":
                   loss = apply_SVN(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer, step, svn_calculator)
+                  #loss = apply_SVN(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer, step)
                 elif cfg.experiment.method == "SVGD":
                   loss = apply_SVGD(modellist, parameters, batch, train_dataloader, K, device, cfg)
                 elif cfg.experiment.method == "Ensemble":
@@ -114,6 +130,7 @@ def train(modellist, lr, num_epochs, train_dataloader, eval_dataloader, device, 
 
         if cfg.experiment.method == "SVN":
           loss = apply_SVN(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer, step, svn_calculator)
+          #loss = apply_SVN(modellist, parameters, batch, train_dataloader, K, device, cfg, optimizer, step)
         elif cfg.experiment.method == "SVGD":
           loss = apply_SVGD(modellist, parameters, batch, train_dataloader, K, device, cfg)
         elif cfg.experiment.method == "Ensemble":

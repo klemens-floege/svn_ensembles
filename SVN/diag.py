@@ -95,7 +95,7 @@ class DiagHessian(HessianApproximation):
             grad_K_i = grad_K[i][i].clone().detach().float().to(self.device)
             diag_hessian = hessians_tensor[i].clone().detach().float().to(self.device)
 
-            D = squared_kernel_i * diag_hessian # Compute the diagonal matrix D
+            '''D = squared_kernel_i * diag_hessian # Compute the diagonal matrix D
             D_inv = 1.0 / (D + epsilon)  # Adding epsilon directly to D
             D_inv = torch.diag(D_inv) # Reshape D_inv and grad_K_i for matrix operations
             grad_K_i = grad_K_i.view(-1, 1)
@@ -105,6 +105,22 @@ class DiagHessian(HessianApproximation):
             #A_inv = D_inv - outer_product / (1 + u_T_D_inv_u) # Compute the inverse using the Sherman-Morrison formula
             A_inv = D_inv - outer_product / (1 + u_T_D_inv_u + epsilon)  # Add epsilon to the denominator for stability
             alpha_part = A_inv @ v_svgd[i]
+            alpha_list.append(alpha_part)'''
+
+
+            D = squared_kernel_i * diag_hessian # Compute the diagonal matrix D
+            D_inv = 1.0 / (D + epsilon)  # Adding epsilon directly to D
+            u_T_D_inv_u = torch.sum(D_inv * grad_K_i**2)  # Computing u^T D^-1 u, which is a scalar
+            D_inv_u = D_inv * grad_K_i # Compute the outer product D^-1 u u^T D^-1
+
+            
+            scaling_factor = 1 / (1 + u_T_D_inv_u + epsilon)
+            term1= D_inv * v_svgd[i]
+            term2 = torch.sum(D_inv_u * v_svgd[i])
+            alpha_part = term1 - (scaling_factor * term2) * D_inv_u
+            #outer_product = D_inv_u @ D_inv_u.t()
+            #A_inv = D_inv - outer_product / (1 + u_T_D_inv_u + epsilon)  # Add epsilon to the denominator for stability
+            #alpha_part = A_inv @ v_svgd[i]
             alpha_list.append(alpha_part)
         alphas = torch.stack(alpha_list, dim=0).view(self.n_particles, -1)
         alphas_reshaped = alphas.view(self.n_particles, -1) #(n_particles, n_parameters)
@@ -163,9 +179,14 @@ class DiagHessian(HessianApproximation):
         # Reshape to the correct dimensions
         sqrt_batch_size = torch.sqrt(torch.tensor(self.cfg.experiment.batch_size, dtype=torch.float32))
 
-        #hessians_tensor = (1/self.cfg.experiment.batch_size) * v_hat_tensor.view(self.n_particles, -1)
+        hessians_tensor = self.cfg.experiment.batch_size * v_hat_tensor.view(self.n_particles, -1)
         #hessians_tensor = (1/sqrt_batch_size) * v_hat_tensor.view(self.n_particles, -1)
-        hessians_tensor = sqrt_batch_size * v_hat_tensor.view(self.n_particles, -1)
+        #hessians_tensor = sqrt_batch_size * v_hat_tensor.view(self.n_particles, -1)
+
+        scale_factor = 1e-5  # or another small value depending on the magnitude
+        #hessians_tensor = scale_factor * hessians_tensor
+        hessians_tensor = (hessians_tensor - hessians_tensor.mean()) / hessians_tensor.std()
+
         
         #print('hesisans: ', hessians_tensor[:5])
         #print(hessians_tensor.shape)
@@ -181,11 +202,13 @@ class DiagHessian(HessianApproximation):
             hessian = group["hess"]
             print('particle hessian shape',  hessian.shape)
             hessians.append(hessian)"""
-        print(self.optimizer.param_groups[0].keys())
+        #print(self.optimizer.param_groups[0].keys())
 
         #flat_hessians_tensor = torch.cat(hessians, 0)
         flat_hessians_tensor = self.optimizer.param_groups[0]["hess"]
         hessians_tensor = self.cfg.experiment.batch_size * flat_hessians_tensor.view(self.n_particles, -1)
+
+        
 
         #print('hesisans: ', hessians_tensor[:5])
         #print('hesisans: ', hessians_tensor.shape)
