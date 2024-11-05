@@ -1,4 +1,4 @@
-# Stein Variational Newton Nerual Network Ensembles
+# Stein Variational Newton Neural Network Ensembles
 
 This repo contains the implementation for the paper "Stein Variational Newton Neural Network Ensembles" (https://arxiv.org/abs/2411.01887). Please refer to the paper for a detailed description of our approach and experimental information.
 
