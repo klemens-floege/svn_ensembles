@@ -1,6 +1,6 @@
-# Introducing SVN and sSVN Ensembles for Enhanced Bayesian Inference in Deep Learning
+# Stein Variational Newton Nerual Network Ensembles
 
-Welcome to our repository, where we introduce a cutting-edge approach to Bayesian inference in deep learning through the application of the Stein Variational Newton (SVN) method and its stochastic counterpart, the stochastic Stein Variational Newton (sSVN) method, to ensembles of deep neural networks. This novel integration is designed to significantly improve the robustness and predictive accuracy of ensemble methods in deep learning, offering a compelling solution for both regression and classification tasks, particularly those where second-order dynamics play a crucial role.
+This repo contains the implementation for the paper "Stein Variational Newton Nerual Network Ensembles" (https://arxiv.org/abs/2411.01887). Please refer to the paper for a detailed description of our approach and experimental information.
 
 ## Why Stein Variational Newton Methods?
 
